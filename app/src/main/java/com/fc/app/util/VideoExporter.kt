@@ -9,6 +9,7 @@ import android.graphics.Typeface
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.annotation.OptIn
+import androidx.media3.common.Effect
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.BitmapOverlay
@@ -67,8 +68,8 @@ class VideoExporter(private val context: Context) {
             )
             val overlayEffect = OverlayEffect(ImmutableList.of(bitmapOverlay))
             val effects = Effects(
-                /* audioProcessors= */ ImmutableList.of(),
-                /* videoEffects= */ ImmutableList.of(overlayEffect),
+                /* audioProcessors= */ emptyList(),
+                /* videoEffects= */ listOf<Effect>(overlayEffect),
             )
 
             val editedMediaItem = EditedMediaItem.Builder(

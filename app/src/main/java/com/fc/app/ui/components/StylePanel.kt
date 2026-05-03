@@ -27,17 +27,19 @@ val presetColors = listOf(
 )
 
 /** Extract the alpha component (0–255) from a "#AARRGGBB" or "#RRGGBB" hex string. */
-private fun alphaFromHex(hex: String): Int {
+internal fun alphaFromHex(hex: String): Int {
     val c = hex.removePrefix("#")
-    return if (c.length == 8) c.substring(0, 2).toIntOrNull(16) ?: 136 else 255
+    return if (c.length == 8) c.substring(0, 2).toIntOrNull(16) ?: DEFAULT_BG_ALPHA else 255
 }
 
 /** Return a new hex with the alpha replaced, keeping the existing RGB. */
-private fun setAlphaInHex(hex: String, alpha: Int): String {
+internal fun setAlphaInHex(hex: String, alpha: Int): String {
     val c = hex.removePrefix("#")
     val rgb = if (c.length == 8) c.substring(2) else if (c.length == 6) c else "000000"
     return "#%02X$rgb".format(alpha.coerceIn(0, 255))
 }
+
+private const val DEFAULT_BG_ALPHA = 136
 
 @Composable
 fun StylePanel(
@@ -181,15 +183,4 @@ fun StylePanel(
     }
 }
 
-/** Expose helpers for other files that compute background alpha from hex. */
-fun alphaFromBackgroundHex(hex: String): Int {
-    val c = hex.removePrefix("#")
-    return if (c.length == 8) c.substring(0, 2).toIntOrNull(16) ?: 136 else 255
-}
-
-fun setAlphaInBackgroundHex(hex: String, alpha: Int): String {
-    val c = hex.removePrefix("#")
-    val rgb = if (c.length == 8) c.substring(2) else if (c.length == 6) c else "000000"
-    return "#%02X$rgb".format(alpha.coerceIn(0, 255))
-}
 

@@ -57,13 +57,13 @@ fun CameraScreen(
     var lensFacing by remember { mutableStateOf(CameraSelector.LENS_FACING_BACK) }
     var hasPermissions by remember { mutableStateOf(false) }
 
-    // Count up seconds while recording
+    // Count up seconds while recording; exits automatically when isRecording flips to false
     LaunchedEffect(isRecording) {
         if (isRecording) {
             recordingSeconds = 0
-            while (true) {
+            while (isRecording) {
                 delay(1_000L)
-                recordingSeconds++
+                if (isRecording) recordingSeconds++
             }
         }
     }

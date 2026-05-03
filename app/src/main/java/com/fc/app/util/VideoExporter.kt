@@ -18,6 +18,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.BitmapOverlay
 import androidx.media3.effect.OverlayEffect
+import androidx.media3.effect.OverlaySettings
 import androidx.media3.effect.Presentation
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
@@ -46,14 +47,19 @@ class VideoExporter(private val context: Context) {
      * Applies [overlays] to [inputFile] and writes the result to [outputFile].
      * Must be called from a coroutine; switches to the main thread internally as required by
      * the Transformer API.
+     *
+     * @param fadeDurationSecs seconds over which the overlay fades out at the end of the video.
+     *   Pass 0 to keep the overlay visible for the entire duration.
      */
     suspend fun export(
         inputFile: File,
         outputFile: File,
         overlays: List<OverlayTextField>,
         aspectRatioOption: AspectRatioOption,
+        fadeDurationSecs: Int = 0,
     ) {
         val (videoWidth, videoHeight) = getVideoDimensions(inputFile)
+        val videoDurationUs = getVideoDurationUs(inputFile)
         val sourceAspectRatio = if (videoWidth > 0 && videoHeight > 0) {
             videoWidth.toFloat() / videoHeight.toFloat()
         } else {
@@ -64,7 +70,12 @@ class VideoExporter(private val context: Context) {
         val overlayBitmap = buildOverlayBitmap(overlays, outputFrameSize.width, outputFrameSize.height)
 
         withContext(Dispatchers.Main) {
-            val bitmapOverlay = BitmapOverlay.createStaticBitmapOverlay(overlayBitmap)
+            val fadeDurationUs = fadeDurationSecs.toLong() * 1_000_000L
+            val bitmapOverlay: BitmapOverlay = if (fadeDurationUs > 0L && videoDurationUs > 0L) {
+                FadeOutOverlay(overlayBitmap, videoDurationUs, fadeDurationUs)
+            } else {
+                BitmapOverlay.createStaticBitmapOverlay(overlayBitmap)
+            }
             val overlayEffect = OverlayEffect(ImmutableList.of(bitmapOverlay))
             val videoEffects = mutableListOf<Effect>(
                 Presentation.createForAspectRatio(outputAspectRatio, 0),
@@ -130,6 +141,20 @@ class VideoExporter(private val context: Context) {
             // Fallback to a safe default when the file cannot be probed
             // (e.g. unsupported codec, corrupt file, or platform restriction).
             Pair(DEFAULT_VIDEO_WIDTH, DEFAULT_VIDEO_HEIGHT)
+        } finally {
+            retriever.release()
+        }
+    }
+
+    private fun getVideoDurationUs(file: File): Long {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(file.absolutePath)
+            val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                ?.toLongOrNull() ?: 0L
+            durationMs * 1_000L
+        } catch (e: Exception) {
+            0L
         } finally {
             retriever.release()
         }
@@ -235,3 +260,32 @@ class VideoExporter(private val context: Context) {
         return bitmap
     }
 }
+
+/**
+ * A [BitmapOverlay] that keeps the overlay fully visible and then linearly fades it out
+ * over the last [fadeDurationUs] microseconds of the video.
+ */
+@OptIn(UnstableApi::class)
+private class FadeOutOverlay(
+    private val bitmap: Bitmap,
+    private val videoDurationUs: Long,
+    private val fadeDurationUs: Long,
+) : BitmapOverlay() {
+
+    override fun getBitmap(presentationTimeUs: Long): Bitmap = bitmap
+
+    override fun getOverlaySettings(presentationTimeUs: Long): OverlaySettings {
+        val fadeStartUs = videoDurationUs - fadeDurationUs
+        val alpha = when {
+            fadeDurationUs <= 0L -> 1f
+            presentationTimeUs >= videoDurationUs -> 0f
+            presentationTimeUs <= fadeStartUs -> 1f
+            else -> 1f - (presentationTimeUs - fadeStartUs).toFloat() / fadeDurationUs.toFloat()
+        }
+        return OverlaySettings.Builder()
+            .setAlphaScale(alpha.coerceIn(0f, 1f))
+            .build()
+    }
+}
+
+

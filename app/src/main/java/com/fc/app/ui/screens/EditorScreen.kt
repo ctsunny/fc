@@ -63,32 +63,44 @@ fun EditorScreen(
                 onSelected = viewModel::updateAspectRatioOption
             )
 
+            // Preview area – outer black container takes all available weight space;
+            // inner box is constrained to the selected aspect ratio so the canvas
+            // accurately shows what the exported video will look like.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .background(Color.Black)
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center
             ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(videoUri)
-                        .crossfade(true)
-                        .decoderFactory { result, options, _ -> VideoFrameDecoder(result.source, options) }
-                        .build(),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
-                )
-                DraggableCanvas(
-                    fields = uiState.fields,
-                    selectedFieldId = uiState.selectedFieldId,
-                    onFieldSelected = { id ->
-                        viewModel.selectField(id)
-                        expandedFieldId = id
-                    },
-                    onFieldMoved = { id, x, y -> viewModel.updateFieldPosition(id, x, y) },
-                    modifier = Modifier.fillMaxSize()
-                )
+                val fixedRatio = uiState.aspectRatioOption.fixedRatio
+                val innerModifier = if (fixedRatio != null) {
+                    Modifier.aspectRatio(fixedRatio)
+                } else {
+                    Modifier.fillMaxSize()
+                }
+                Box(modifier = innerModifier) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(videoUri)
+                            .crossfade(true)
+                            .decoderFactory { result, options, _ -> VideoFrameDecoder(result.source, options) }
+                            .build(),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    DraggableCanvas(
+                        fields = uiState.fields,
+                        selectedFieldId = uiState.selectedFieldId,
+                        onFieldSelected = { id ->
+                            viewModel.selectField(id)
+                            expandedFieldId = id
+                        },
+                        onFieldMoved = { id, x, y -> viewModel.updateFieldPosition(id, x, y) },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
 
             Text(
@@ -97,6 +109,12 @@ fun EditorScreen(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
             )
+
+            FadeDurationRow(
+                fadeSecs = uiState.fadeDurationSecs,
+                onFadeSecsChange = viewModel::updateFadeDurationSecs
+            )
+
             LazyColumn(modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
@@ -140,6 +158,32 @@ private fun AspectRatioSelectorRow(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun FadeDurationRow(
+    fadeSecs: Int,
+    onFadeSecsChange: (Int) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            if (fadeSecs == 0) "文字淡出：关闭" else "文字淡出：${fadeSecs}秒",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.width(110.dp)
+        )
+        Slider(
+            value = fadeSecs.toFloat(),
+            onValueChange = { onFadeSecsChange(it.toInt()) },
+            valueRange = 0f..10f,
+            steps = 9,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
@@ -197,3 +241,4 @@ private fun FieldRow(
         HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
     }
 }
+

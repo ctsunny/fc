@@ -2,7 +2,8 @@ package com.fc.app.util
 
 enum class AspectRatioOption(
     val label: String,
-    private val fixedRatio: Float?,
+    /** null means "use source ratio" */
+    val fixedRatio: Float?,
 ) {
     ORIGINAL("原视频", null),
     PORTRAIT_9_16("9:16", 9f / 16f),

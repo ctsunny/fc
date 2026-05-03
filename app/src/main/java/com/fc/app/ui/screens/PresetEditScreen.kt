@@ -117,6 +117,8 @@ fun PresetEditScreen(
                         onColor = { viewModel.updatePresetEditFieldColor(field.id, it) },
                         onBold = { viewModel.updatePresetEditFieldBold(field.id, it) },
                         onFontFamily = { viewModel.updatePresetEditFieldFontFamily(field.id, it) },
+                        onHasBackground = { viewModel.updatePresetEditFieldHasBackground(field.id, it) },
+                        onBackgroundAlpha = { viewModel.updatePresetEditFieldBackgroundAlpha(field.id, it) },
                     )
                 }
             }
@@ -135,6 +137,8 @@ private fun PresetFieldRow(
     onColor: (String) -> Unit,
     onBold: (Boolean) -> Unit,
     onFontFamily: (FontFamilyOption) -> Unit = {},
+    onHasBackground: (Boolean) -> Unit = {},
+    onBackgroundAlpha: (Int) -> Unit = {},
 ) {
     Column {
         Row(
@@ -178,6 +182,8 @@ private fun PresetFieldRow(
                 onColorChange = onColor,
                 onBoldChange = onBold,
                 onFontFamilyChange = onFontFamily,
+                onHasBackgroundChange = onHasBackground,
+                onBackgroundAlphaChange = onBackgroundAlpha,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
             )
         }

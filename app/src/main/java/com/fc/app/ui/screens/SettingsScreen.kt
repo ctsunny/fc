@@ -21,7 +21,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onEditPreset: () -> Unit = {},
 ) {
-    var presets by remember { mutableStateOf(viewModel.loadUserPresets()) }
+    val presets by viewModel.userPresetsFlow.collectAsState()
     var showSaveDialog by remember { mutableStateOf(false) }
     var presetNameInput by remember { mutableStateOf("") }
     var deleteCandidate by remember { mutableStateOf<UserPreset?>(null) }
@@ -109,7 +109,6 @@ fun SettingsScreen(
                         val name = presetNameInput.trim()
                         if (name.isNotEmpty()) {
                             viewModel.saveCurrentAsPreset(name)
-                            presets = viewModel.loadUserPresets()
                         }
                         showSaveDialog = false
                     },
@@ -131,7 +130,6 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.deleteUserPreset(candidate.name)
-                    presets = viewModel.loadUserPresets()
                     deleteCandidate = null
                 }) { Text("删除", color = MaterialTheme.colorScheme.error) }
             },

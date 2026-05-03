@@ -31,6 +31,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import java.io.File
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 private const val TAG = "CameraScreen"
@@ -52,8 +53,20 @@ fun CameraScreen(
     var videoCapture by remember { mutableStateOf<VideoCapture<Recorder>?>(null) }
     var recording by remember { mutableStateOf<Recording?>(null) }
     var isRecording by remember { mutableStateOf(false) }
+    var recordingSeconds by remember { mutableIntStateOf(0) }
     var lensFacing by remember { mutableStateOf(CameraSelector.LENS_FACING_BACK) }
     var hasPermissions by remember { mutableStateOf(false) }
+
+    // Count up seconds while recording
+    LaunchedEffect(isRecording) {
+        if (isRecording) {
+            recordingSeconds = 0
+            while (true) {
+                delay(1_000L)
+                recordingSeconds++
+            }
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -187,7 +200,13 @@ fun CameraScreen(
                             tint = Color.Red,
                             modifier = Modifier.size(16.dp)
                         )
-                        Text("录制中", color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                        val minutes = recordingSeconds / 60
+                        val seconds = recordingSeconds % 60
+                        Text(
+                            "%02d:%02d".format(minutes, seconds),
+                            color = Color.White,
+                            style = MaterialTheme.typography.titleMedium
+                        )
                     }
                 }
 
@@ -228,6 +247,7 @@ fun CameraScreen(
                             } else {
                                 startRecording(context, vc) { savedUri ->
                                     isRecording = false
+                                    recordingSeconds = 0
                                     if (savedUri != null) {
                                         onVideoSaved(savedUri)
                                     }

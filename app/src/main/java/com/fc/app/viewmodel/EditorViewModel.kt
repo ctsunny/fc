@@ -44,6 +44,12 @@ data class EditorUiState(
     val exportProgress: Float = 0f,
     val exportMessage: String = "",
     val exportedFileUri: Uri? = null,
+    // Watermark
+    val watermarkUri: Uri? = null,
+    val watermarkAlpha: Float = 0.8f,
+    val watermarkXFraction: Float = 0.5f,
+    val watermarkYFraction: Float = 0.85f,
+    val watermarkScale: Float = 0.3f,
 )
 
 /** Separate UI-state for the preset-editing screen (no video). */
@@ -278,6 +284,44 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         _uiState.update { s -> s.copy(fields = s.fields.map { if (it.id == fieldId) it.copy(fontFamily = fontFamily) else it }) }
     }
 
+    fun updateFieldHasBackground(fieldId: String, enabled: Boolean) {
+        _uiState.update { s -> s.copy(fields = s.fields.map { if (it.id == fieldId) it.copy(hasBackground = enabled) else it }) }
+    }
+
+    fun updateFieldBackgroundAlpha(fieldId: String, alpha: Int) {
+        _uiState.update { s ->
+            s.copy(fields = s.fields.map {
+                if (it.id == fieldId) {
+                    val hex = it.backgroundColorHex.removePrefix("#")
+                    val rgb = if (hex.length == 8) hex.substring(2) else "000000"
+                    it.copy(backgroundColorHex = "#%02X$rgb".format(alpha.coerceIn(0, 255)))
+                } else it
+            })
+        }
+    }
+
+    // ─── Watermark ────────────────────────────────────────────────────────────
+
+    fun setWatermarkUri(uri: Uri?) {
+        _uiState.update { it.copy(watermarkUri = uri) }
+    }
+
+    fun setWatermarkAlpha(alpha: Float) {
+        _uiState.update { it.copy(watermarkAlpha = alpha.coerceIn(0f, 1f)) }
+    }
+
+    fun setWatermarkPosition(x: Float, y: Float) {
+        _uiState.update { it.copy(watermarkXFraction = x.coerceIn(0f, 1f), watermarkYFraction = y.coerceIn(0f, 1f)) }
+    }
+
+    fun setWatermarkScale(scale: Float) {
+        _uiState.update { it.copy(watermarkScale = scale.coerceIn(0.05f, 1f)) }
+    }
+
+    fun clearWatermark() {
+        _uiState.update { it.copy(watermarkUri = null) }
+    }
+
     fun clearFields() {
         _uiState.update {
             it.copy(
@@ -327,6 +371,22 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updatePresetEditFieldFontFamily(fieldId: String, fontFamily: FontFamilyOption) {
         _presetEditState.update { s -> s.copy(fields = s.fields.map { if (it.id == fieldId) it.copy(fontFamily = fontFamily) else it }) }
+    }
+
+    fun updatePresetEditFieldHasBackground(fieldId: String, enabled: Boolean) {
+        _presetEditState.update { s -> s.copy(fields = s.fields.map { if (it.id == fieldId) it.copy(hasBackground = enabled) else it }) }
+    }
+
+    fun updatePresetEditFieldBackgroundAlpha(fieldId: String, alpha: Int) {
+        _presetEditState.update { s ->
+            s.copy(fields = s.fields.map {
+                if (it.id == fieldId) {
+                    val hex = it.backgroundColorHex.removePrefix("#")
+                    val rgb = if (hex.length == 8) hex.substring(2) else "000000"
+                    it.copy(backgroundColorHex = "#%02X$rgb".format(alpha.coerceIn(0, 255)))
+                } else it
+            })
+        }
     }
 
     fun updatePresetEditFieldVisibility(fieldId: String, visible: Boolean) {
@@ -398,6 +458,11 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                     previewCanvasWidth = state.previewCanvasWidth,
                     fruitFilter1Enabled = state.fruitFilter1Enabled,
                     fruitFilter2Enabled = state.fruitFilter2Enabled,
+                    watermarkUri = state.watermarkUri,
+                    watermarkAlpha = state.watermarkAlpha,
+                    watermarkXFraction = state.watermarkXFraction,
+                    watermarkYFraction = state.watermarkYFraction,
+                    watermarkScale = state.watermarkScale,
                 )
 
                 _uiState.update { it.copy(exportProgress = 0.85f, exportMessage = "正在保存到相册...") }

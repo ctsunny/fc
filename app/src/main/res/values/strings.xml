@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">果旺角视频</string>
+    <string name="app_name">果旺角相机</string>
     <string name="editor_preview_hint">拖动文字调整位置 · 点击文字展开编辑 · 预览与导出共用当前比例</string>
 </resources>

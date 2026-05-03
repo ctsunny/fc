@@ -30,6 +30,7 @@ import com.fc.app.util.clampOverlayAnchorX
 import com.fc.app.util.clampOverlayAnchorY
 import com.fc.app.util.overlayBounds
 import com.fc.app.util.parseColorOrDefault
+import com.fc.app.util.toComposeFontFamily
 
 /**
  * 可拖拽文字覆层画布
@@ -202,6 +203,7 @@ private fun hitTest(fields: List<MeasuredOverlayField>, tap: Offset): String? =
 private fun textStyleFor(field: OverlayTextField) = TextStyle(
     fontSize = field.fontSize.sp,
     fontWeight = if (field.isBold) FontWeight.Bold else FontWeight.Normal,
+    fontFamily = field.fontFamily.toComposeFontFamily(),
     color = Color(parseColorOrDefault(field.colorHex, android.graphics.Color.WHITE)),
     textAlign = when (field.textAlign) {
         TextAlignOption.CENTER -> TextAlign.Center
@@ -244,13 +246,13 @@ private fun DrawScope.drawOverlayText(
         )
     }
 
-    // Shadow
+    // Shadow – reuse the pre-measured layout at a (2, 2) offset to avoid re-wrapping
+    // that would produce misaligned black ghost text under long strings.
     if (field.hasShadow) {
         drawText(
-            textMeasurer = textMeasurer,
-            text = field.text,
+            textLayoutResult = measuredField.layout,
             topLeft = Offset(contentBounds.left + 2f, contentBounds.top + 2f),
-            style = textStyleFor(field).copy(color = Color.Black)
+            color = Color.Black
         )
     }
 

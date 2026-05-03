@@ -19,6 +19,7 @@ import com.fc.app.viewmodel.EditorViewModel
 fun SettingsScreen(
     viewModel: EditorViewModel,
     onBack: () -> Unit,
+    onEditPreset: () -> Unit = {},
 ) {
     var presets by remember { mutableStateOf(viewModel.loadUserPresets()) }
     var showSaveDialog by remember { mutableStateOf(false) }
@@ -73,6 +74,10 @@ fun SettingsScreen(
                             onLoad = {
                                 viewModel.applyUserPreset(preset)
                                 onBack()
+                            },
+                            onEdit = {
+                                viewModel.startPresetEdit(preset)
+                                onEditPreset()
                             },
                             onDelete = { deleteCandidate = preset }
                         )
@@ -141,6 +146,7 @@ fun SettingsScreen(
 private fun PresetCard(
     preset: UserPreset,
     onLoad: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -158,6 +164,7 @@ private fun PresetCard(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
                 )
             }
+            TextButton(onClick = onEdit) { Text("编辑") }
             TextButton(onClick = onLoad) { Text("应用") }
             IconButton(onClick = onDelete) {
                 Icon(

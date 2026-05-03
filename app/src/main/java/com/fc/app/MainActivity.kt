@@ -25,6 +25,7 @@ import androidx.navigation.compose.rememberNavController
 import com.fc.app.ui.screens.CaptureScreen
 import com.fc.app.ui.screens.EditorScreen
 import com.fc.app.ui.screens.ExportScreen
+import com.fc.app.ui.screens.PresetEditScreen
 import com.fc.app.ui.screens.SettingsScreen
 import com.fc.app.ui.theme.FcTheme
 import com.fc.app.viewmodel.EditorViewModel
@@ -107,7 +108,17 @@ fun FcApp() {
         composable("settings") {
             SettingsScreen(
                 viewModel = vm,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onEditPreset = {
+                    navController.navigate("presetEdit") { launchSingleTop = true }
+                }
+            )
+        }
+        composable("presetEdit") {
+            PresetEditScreen(
+                viewModel = vm,
+                onSave = { navController.popBackStack() },
+                onCancel = { navController.popBackStack() }
             )
         }
     }

@@ -27,6 +27,7 @@ import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.Transformer
 import com.fc.app.data.model.OverlayTextField
+import com.fc.app.util.toTypeface
 import com.google.common.collect.ImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -189,7 +190,7 @@ class VideoExporter(private val context: Context) {
                 // fontScale converts sp to bitmap pixels, accounting for both screen
                 // density and the ratio between the export bitmap and screen widths.
                 textSize = field.fontSize * fontScale
-                typeface = if (field.isBold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+                typeface = field.fontFamily.toTypeface(field.isBold)
                 color = parseColorOrDefault(field.colorHex, Color.WHITE)
                 if (field.hasShadow) setShadowLayer(4f, 2f, 2f, Color.BLACK)
             }
@@ -279,12 +280,18 @@ private class FadeOutOverlay(
     override fun getBitmap(presentationTimeUs: Long): Bitmap = bitmap
 
     override fun getOverlaySettings(presentationTimeUs: Long): OverlaySettings {
-        val fadeStartUs = videoDurationUs - fadeDurationUs
+        // Ensure the fade window never starts before the video begins.
+        val effectiveFadeDurationUs = fadeDurationUs.coerceAtMost(videoDurationUs)
+        val fadeStartUs = videoDurationUs - effectiveFadeDurationUs
         val alpha = when {
-            fadeDurationUs <= 0L -> 1f
+            effectiveFadeDurationUs <= 0L -> 1f
             presentationTimeUs >= videoDurationUs -> 0f
             presentationTimeUs <= fadeStartUs -> 1f
-            else -> 1f - (presentationTimeUs - fadeStartUs).toFloat() / fadeDurationUs.toFloat()
+            else -> {
+                val elapsed = (presentationTimeUs - fadeStartUs).toFloat()
+                val window = effectiveFadeDurationUs.toFloat()
+                (1f - elapsed / window).coerceIn(0f, 1f)
+            }
         }
         return OverlaySettings.Builder()
             .setAlphaScale(alpha.coerceIn(0f, 1f))

@@ -15,6 +15,7 @@ import com.fc.app.data.UserPreset
 import com.fc.app.util.VideoExporter
 import com.fc.app.util.AspectRatioOption
 import com.fc.app.data.PresetTemplates
+import com.fc.app.data.model.FontFamilyOption
 import com.fc.app.data.model.OverlayTextField
 import com.fc.app.data.model.StyleTemplate
 import com.fc.app.data.model.TemplateCategory
@@ -40,7 +41,14 @@ data class EditorUiState(
     val isExporting: Boolean = false,
     val exportProgress: Float = 0f,
     val exportMessage: String = "",
-    val exportedFileUri: Uri? = null
+    val exportedFileUri: Uri? = null,
+)
+
+/** Separate UI-state for the preset-editing screen (no video). */
+data class PresetEditUiState(
+    val presetName: String = "",
+    val fields: List<OverlayTextField> = emptyList(),
+    val selectedFieldId: String? = null,
 )
 
 class EditorViewModel(application: Application) : AndroidViewModel(application) {
@@ -52,6 +60,9 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _uiState = MutableStateFlow(EditorUiState())
     val uiState: StateFlow<EditorUiState> = _uiState.asStateFlow()
+
+    private val _presetEditState = MutableStateFlow(PresetEditUiState())
+    val presetEditState: StateFlow<PresetEditUiState> = _presetEditState.asStateFlow()
 
     fun setVideoUri(uri: Uri) {
         val lastFields = userPrefs.loadLastFields()
@@ -232,6 +243,10 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         _uiState.update { s -> s.copy(fields = s.fields.map { if (it.id == fieldId) it.copy(isVisible = visible) else it }) }
     }
 
+    fun updateFieldFontFamily(fieldId: String, fontFamily: FontFamilyOption) {
+        _uiState.update { s -> s.copy(fields = s.fields.map { if (it.id == fieldId) it.copy(fontFamily = fontFamily) else it }) }
+    }
+
     fun clearFields() {
         _uiState.update {
             it.copy(
@@ -249,6 +264,69 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     fun clearProject() {
         _uiState.value = EditorUiState()
     }
+
+    // ─── Preset editing ───────────────────────────────────────────────────────
+
+    fun startPresetEdit(preset: UserPreset) {
+        _presetEditState.value = PresetEditUiState(
+            presetName = preset.name,
+            fields = preset.fields.map { it.copy() },
+        )
+    }
+
+    fun selectPresetEditField(fieldId: String?) {
+        _presetEditState.update { it.copy(selectedFieldId = fieldId) }
+    }
+
+    fun updatePresetEditFieldText(fieldId: String, text: String) {
+        _presetEditState.update { s -> s.copy(fields = s.fields.map { if (it.id == fieldId) it.copy(text = text) else it }) }
+    }
+
+    fun updatePresetEditFieldFontSize(fieldId: String, size: Float) {
+        _presetEditState.update { s -> s.copy(fields = s.fields.map { if (it.id == fieldId) it.copy(fontSize = size.coerceIn(10f, 80f)) else it }) }
+    }
+
+    fun updatePresetEditFieldColor(fieldId: String, hex: String) {
+        _presetEditState.update { s -> s.copy(fields = s.fields.map { if (it.id == fieldId) it.copy(colorHex = hex) else it }) }
+    }
+
+    fun updatePresetEditFieldBold(fieldId: String, bold: Boolean) {
+        _presetEditState.update { s -> s.copy(fields = s.fields.map { if (it.id == fieldId) it.copy(isBold = bold) else it }) }
+    }
+
+    fun updatePresetEditFieldFontFamily(fieldId: String, fontFamily: FontFamilyOption) {
+        _presetEditState.update { s -> s.copy(fields = s.fields.map { if (it.id == fieldId) it.copy(fontFamily = fontFamily) else it }) }
+    }
+
+    fun updatePresetEditFieldVisibility(fieldId: String, visible: Boolean) {
+        _presetEditState.update { s -> s.copy(fields = s.fields.map { if (it.id == fieldId) it.copy(isVisible = visible) else it }) }
+    }
+
+    fun updatePresetEditFieldPosition(fieldId: String, xFraction: Float, yFraction: Float) {
+        _presetEditState.update { s ->
+            s.copy(fields = s.fields.map {
+                if (it.id == fieldId) it.copy(
+                    xFraction = xFraction.coerceIn(0f, 1f),
+                    yFraction = yFraction.coerceIn(0f, 1f)
+                ) else it
+            })
+        }
+    }
+
+    /** Persists the currently edited preset and clears the edit state. */
+    fun savePresetEdit() {
+        val state = _presetEditState.value
+        if (state.presetName.isNotEmpty()) {
+            userPrefs.savePreset(state.presetName, state.fields)
+        }
+        _presetEditState.value = PresetEditUiState()
+    }
+
+    fun cancelPresetEdit() {
+        _presetEditState.value = PresetEditUiState()
+    }
+
+    // ─── Export ───────────────────────────────────────────────────────────────
 
     @OptIn(UnstableApi::class)
     fun exportVideo() {

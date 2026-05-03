@@ -22,8 +22,20 @@ data class OverlayTextField(
     val hasShadow: Boolean = true,
     val hasBackground: Boolean = false,
     val backgroundColorHex: String = "#88000000",
-    val textAlign: TextAlignOption = TextAlignOption.LEFT
+    val textAlign: TextAlignOption = TextAlignOption.LEFT,
+    val fontFamily: FontFamilyOption = FontFamilyOption.DEFAULT,
 )
 
 @Serializable
 enum class TextAlignOption { LEFT, CENTER, RIGHT }
+
+/**
+ * 字体族选项，均为系统自带且支持 CJK 中文的字体。
+ */
+@Serializable
+enum class FontFamilyOption(val label: String) {
+    DEFAULT("默认"),
+    SANS_SERIF_MEDIUM("中黑"),
+    CONDENSED("紧凑"),
+    SERIF("衬线"),
+}

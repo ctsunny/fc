@@ -45,7 +45,6 @@ fun DraggableCanvas(
 ) {
     val textMeasurer = rememberTextMeasurer()
     var draggingFieldId by remember { mutableStateOf<String?>(null) }
-    var draggingAnchor by remember { mutableStateOf<Offset?>(null) }
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     val measuredFields = remember(fields, canvasSize, textMeasurer) {
         measureFields(
@@ -75,6 +74,10 @@ fun DraggableCanvas(
                 // but NOT on every field-position update, which previously cancelled the drag
                 // on every frame and made dragging completely non-functional.
                 .pointerInput(canvasSize) {
+                    // Plain local var – not a Compose state, so updating it on every drag frame
+                    // does NOT trigger a recompose + text remeasure, removing the jitter that
+                    // caused text to only move a tiny bit per drag gesture.
+                    var draggingAnchor: Offset? = null
                     detectDragGestures(
                         onDragStart = { offset ->
                             val fields = measuredFieldsState.value

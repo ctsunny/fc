@@ -41,7 +41,8 @@ fun DraggableCanvas(
     selectedFieldId: String?,
     onFieldSelected: (String?) -> Unit,
     onFieldMoved: (String, Float, Float) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onCanvasSizeChanged: (IntSize) -> Unit = {},
 ) {
     val textMeasurer = rememberTextMeasurer()
     var draggingFieldId by remember { mutableStateOf<String?>(null) }
@@ -61,7 +62,10 @@ fun DraggableCanvas(
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .onSizeChanged { canvasSize = it }
+                .onSizeChanged {
+                    canvasSize = it
+                    onCanvasSizeChanged(it)
+                }
                 // Key = Unit: tap handler never needs to restart; latest fields are read
                 // via measuredFieldsState.value at the time each tap fires.
                 .pointerInput(Unit) {

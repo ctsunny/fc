@@ -98,6 +98,7 @@ fun EditorScreen(
                             expandedFieldId = id
                         },
                         onFieldMoved = { id, x, y -> viewModel.updateFieldPosition(id, x, y) },
+                        onCanvasSizeChanged = { size -> viewModel.updatePreviewCanvasSize(size.width, size.height) },
                         modifier = Modifier.fillMaxSize()
                     )
                 }

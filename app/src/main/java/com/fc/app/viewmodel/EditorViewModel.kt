@@ -36,6 +36,7 @@ data class EditorUiState(
     val selectedTemplate: StyleTemplate? = null,
     val aspectRatioOption: AspectRatioOption = AspectRatioOption.ORIGINAL,
     val fadeDurationSecs: Int = UserPreferences.DEFAULT_FADE_SECS,
+    val previewCanvasWidth: Int = 0,
     val isExporting: Boolean = false,
     val exportProgress: Float = 0f,
     val exportMessage: String = "",
@@ -113,7 +114,75 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         userPrefs.deletePreset(name)
     }
 
-    fun selectField(fieldId: String?) {
+    fun updatePreviewCanvasSize(width: Int, height: Int) {
+        if (width > 0) {
+            _uiState.update { it.copy(previewCanvasWidth = width) }
+        }
+    }
+
+    fun saveDraft() {
+        val state = _uiState.value
+        val uri = state.videoUri ?: return
+        userPrefs.saveDraft(
+            videoUriString = uri.toString(),
+            fields = state.fields,
+            aspectRatio = state.aspectRatioOption,
+            fadeSecs = state.fadeDurationSecs,
+        )
+    }
+
+    fun hasDraft(): Boolean = userPrefs.hasDraft()
+
+    fun restoreDraft(): Boolean {
+        val draft = userPrefs.loadDraft() ?: return false
+        _uiState.update {
+            it.copy(
+                videoUri = Uri.parse(draft.videoUriString),
+                fields = draft.fields.map { f -> f.copy() },
+                selectedFieldId = null,
+                selectedTemplate = null,
+                aspectRatioOption = draft.aspectRatioOption(),
+                fadeDurationSecs = draft.fadeSecs,
+                isExporting = false,
+                exportProgress = 0f,
+                exportMessage = "",
+                exportedFileUri = null,
+            )
+        }
+        return true
+    }
+
+    fun clearDraft() {
+        userPrefs.clearDraft()
+    }
+
+    fun savePreferredCaptureRatio(option: AspectRatioOption) {
+        userPrefs.savePreferredCaptureRatio(option)
+    }
+
+    fun loadPreferredCaptureRatio(): AspectRatioOption =
+        userPrefs.loadPreferredCaptureRatio()
+
+    fun setVideoUriWithRatio(uri: Uri, preferredRatio: AspectRatioOption) {
+        val lastFields = userPrefs.loadLastFields()
+        val lastFade = userPrefs.loadFadeDurationSecs()
+        _uiState.update {
+            it.copy(
+                videoUri = uri,
+                fields = (lastFields ?: PresetTemplates.promotionFields).map { field -> field.copy() },
+                selectedFieldId = null,
+                selectedTemplate = null,
+                aspectRatioOption = preferredRatio,
+                fadeDurationSecs = lastFade,
+                isExporting = false,
+                exportProgress = 0f,
+                exportMessage = "",
+                exportedFileUri = null,
+            )
+        }
+    }
+
+
         _uiState.update { it.copy(selectedFieldId = fieldId) }
     }
 
@@ -215,6 +284,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                     overlays = state.fields,
                     aspectRatioOption = state.aspectRatioOption,
                     fadeDurationSecs = state.fadeDurationSecs,
+                    previewCanvasWidth = state.previewCanvasWidth,
                 )
 
                 _uiState.update { it.copy(exportProgress = 0.85f, exportMessage = "正在保存到相册...") }

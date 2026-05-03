@@ -5,8 +5,11 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.*
@@ -14,32 +17,52 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import com.fc.app.R
+import com.fc.app.util.AspectRatioOption
+import com.fc.app.util.saveVideoFileToMediaStore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CaptureScreen(onVideoSelected: (Uri) -> Unit, onSettingsClick: () -> Unit = {}) {
+fun CaptureScreen(
+    onVideoSelected: (Uri, AspectRatioOption) -> Unit,
+    onSettingsClick: () -> Unit = {},
+    hasDraft: Boolean = false,
+    onResumeDraft: () -> Unit = {},
+    initialAspectRatio: AspectRatioOption = AspectRatioOption.PORTRAIT_9_16,
+    onAspectRatioSelected: (AspectRatioOption) -> Unit = {},
+) {
     val context = LocalContext.current
     var tempVideoFile by remember { mutableStateOf<File?>(null) }
     var tempVideoUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedRatio by remember { mutableStateOf(initialAspectRatio) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
-    ) { uri: Uri? -> uri?.let { onVideoSelected(it) } }
+    ) { uri: Uri? -> uri?.let { onVideoSelected(it, selectedRatio) } }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CaptureVideo()
     ) { success ->
         if (success) {
-            tempVideoUri?.let { onVideoSelected(it) }
+            val file = tempVideoFile
+            val uri = tempVideoUri
+            if (uri != null && file != null) {
+                // Save original to gallery in background
+                scope.launch(Dispatchers.IO) {
+                    saveVideoFileToMediaStore(context, file)
+                }
+                onVideoSelected(uri, selectedRatio)
+            }
         } else {
-            // User cancelled or capture failed – delete the pre-allocated temp file.
             tempVideoFile?.delete()
             tempVideoFile = null
             tempVideoUri = null
@@ -66,7 +89,7 @@ fun CaptureScreen(onVideoSelected: (Uri) -> Unit, onSettingsClick: () -> Unit = 
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("FC 视频排版") },
+                title = { Text(stringResource(R.string.app_name)) },
                 actions = {
                     IconButton(onClick = onSettingsClick) {
                         Icon(Icons.Default.Settings, contentDescription = "设置")
@@ -80,7 +103,7 @@ fun CaptureScreen(onVideoSelected: (Uri) -> Unit, onSettingsClick: () -> Unit = 
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(32.dp),
+                .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -90,8 +113,34 @@ fun CaptureScreen(onVideoSelected: (Uri) -> Unit, onSettingsClick: () -> Unit = 
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
-                modifier = Modifier.padding(top = 8.dp, bottom = 40.dp)
+                modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
             )
+
+            // Aspect ratio selector
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp),
+                horizontalAlignment = Alignment.Start
+            ) {
+                Text(
+                    "画幅选择",
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(AspectRatioOption.entries) { option ->
+                        FilterChip(
+                            selected = selectedRatio == option,
+                            onClick = {
+                                selectedRatio = option
+                                onAspectRatioSelected(option)
+                            },
+                            label = { Text(option.label) }
+                        )
+                    }
+                }
+            }
 
             Button(
                 onClick = { galleryLauncher.launch("video/*") },
@@ -113,7 +162,19 @@ fun CaptureScreen(onVideoSelected: (Uri) -> Unit, onSettingsClick: () -> Unit = 
                 Text("拍摄新视频", style = MaterialTheme.typography.titleMedium)
             }
 
-            Spacer(Modifier.height(48.dp))
+            if (hasDraft) {
+                Spacer(Modifier.height(16.dp))
+                OutlinedButton(
+                    onClick = onResumeDraft,
+                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                ) {
+                    Icon(Icons.Default.Restore, contentDescription = null)
+                    Spacer(Modifier.width(12.dp))
+                    Text("恢复草稿", style = MaterialTheme.typography.titleMedium)
+                }
+            }
+
+            Spacer(Modifier.height(40.dp))
 
             Text(
                 "流程：选视频 → 套模板 → 拖拽调位 → 导出",
@@ -124,3 +185,4 @@ fun CaptureScreen(onVideoSelected: (Uri) -> Unit, onSettingsClick: () -> Unit = 
         }
     }
 }
+

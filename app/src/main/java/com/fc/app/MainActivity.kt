@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,14 +45,24 @@ fun FcApp() {
 
     NavHost(navController = navController, startDestination = "capture") {
         composable("capture") {
+            val hasDraft = remember { vm.hasDraft() }
+            val preferredRatio = remember { vm.loadPreferredCaptureRatio() }
             CaptureScreen(
-                onVideoSelected = { uri ->
-                    vm.setVideoUri(uri)
+                onVideoSelected = { uri, ratio ->
+                    vm.setVideoUriWithRatio(uri, ratio)
                     navController.navigate("editor") { launchSingleTop = true }
                 },
                 onSettingsClick = {
                     navController.navigate("settings") { launchSingleTop = true }
-                }
+                },
+                hasDraft = hasDraft,
+                onResumeDraft = {
+                    if (vm.restoreDraft()) {
+                        navController.navigate("editor") { launchSingleTop = true }
+                    }
+                },
+                initialAspectRatio = preferredRatio,
+                onAspectRatioSelected = { vm.savePreferredCaptureRatio(it) },
             )
         }
         composable("editor") {
@@ -60,7 +71,10 @@ fun FcApp() {
                     videoUri = uri,
                     viewModel = vm,
                     onExportClick = { navController.navigate("export") },
-                    onBackClick = { navController.popBackStack() }
+                    onBackClick = {
+                        vm.saveDraft()
+                        navController.popBackStack()
+                    }
                 )
             } ?: EditorFallbackScreen(
                 title = "请先选择视频",
@@ -83,6 +97,7 @@ fun FcApp() {
                     viewModel = vm,
                     onBackToEdit = { navController.popBackStack() },
                     onStartNew = {
+                        vm.clearDraft()
                         vm.clearProject()
                         navController.popBackStack("capture", inclusive = false)
                     }

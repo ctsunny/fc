@@ -302,6 +302,17 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         _presetEditState.update { s -> s.copy(fields = s.fields.map { if (it.id == fieldId) it.copy(isVisible = visible) else it }) }
     }
 
+    fun updatePresetEditFieldPosition(fieldId: String, xFraction: Float, yFraction: Float) {
+        _presetEditState.update { s ->
+            s.copy(fields = s.fields.map {
+                if (it.id == fieldId) it.copy(
+                    xFraction = xFraction.coerceIn(0f, 1f),
+                    yFraction = yFraction.coerceIn(0f, 1f)
+                ) else it
+            })
+        }
+    }
+
     /** Persists the currently edited preset and clears the edit state. */
     fun savePresetEdit() {
         val state = _presetEditState.value

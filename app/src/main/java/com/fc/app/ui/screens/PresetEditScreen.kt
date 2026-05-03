@@ -78,7 +78,9 @@ fun PresetEditScreen(
                             viewModel.selectPresetEditField(id)
                             expandedFieldId = id
                         },
-                        onFieldMoved = { _, _, _ -> /* 预设不记录位置变化 */ },
+                        onFieldMoved = { id, x, y ->
+                            viewModel.updatePresetEditFieldPosition(id, x, y)
+                        },
                         modifier = Modifier.fillMaxSize()
                     )
                 }

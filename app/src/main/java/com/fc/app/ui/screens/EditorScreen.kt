@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.decode.VideoFrameDecoder
+import com.fc.app.data.model.FontFamilyOption
 import com.fc.app.data.model.OverlayTextField
 import com.fc.app.R
 import com.fc.app.ui.components.DraggableCanvas
@@ -199,7 +200,7 @@ private fun FieldRow(
     onSize: (Float) -> Unit,
     onColor: (String) -> Unit,
     onBold: (Boolean) -> Unit,
-    onFontFamily: (com.fc.app.data.model.FontFamilyOption) -> Unit = {},
+    onFontFamily: (FontFamilyOption) -> Unit = {},
 ) {
     Column {
         Row(

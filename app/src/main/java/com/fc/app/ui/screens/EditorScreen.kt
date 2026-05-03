@@ -31,8 +31,6 @@ import com.fc.app.R
 import com.fc.app.ui.components.DraggableCanvas
 import com.fc.app.ui.components.StylePanel
 import com.fc.app.util.AspectRatioOption
-import com.fc.app.util.DEFAULT_VIDEO_ASPECT_RATIO
-import com.fc.app.util.readVideoDimensions
 import com.fc.app.viewmodel.EditorViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,10 +44,6 @@ fun EditorScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     var expandedFieldId by remember { mutableStateOf<String?>(null) }
-    val sourceAspectRatio by produceState(initialValue = DEFAULT_VIDEO_ASPECT_RATIO, key1 = videoUri) {
-        value = readVideoDimensions(context, videoUri)?.aspectRatio?.takeIf { it > 0f } ?: DEFAULT_VIDEO_ASPECT_RATIO
-    }
-    val previewAspectRatio = uiState.aspectRatioOption.resolve(sourceAspectRatio)
 
     Scaffold(
         topBar = {
@@ -78,7 +72,7 @@ fun EditorScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(previewAspectRatio)
+                    .weight(1f)
                     .background(Color.Black)
             ) {
                 AsyncImage(
@@ -109,7 +103,11 @@ fun EditorScreen(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
-                LazyColumn(modifier = Modifier.weight(1f)) {
+                LazyColumn(modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .heightIn(min = 200.dp)
+                ) {
                     items(uiState.fields, key = { it.id }) { field ->
                         FieldRow(
                             field = field,

@@ -7,6 +7,16 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -29,16 +39,16 @@ class MainActivity : ComponentActivity() {
 fun FcApp() {
     val navController = rememberNavController()
     val vm: EditorViewModel = viewModel()
+    val state by vm.uiState.collectAsState()
 
     NavHost(navController = navController, startDestination = "capture") {
         composable("capture") {
             CaptureScreen { uri ->
                 vm.setVideoUri(uri)
-                navController.navigate("editor")
+                navController.navigate("editor") { launchSingleTop = true }
             }
         }
         composable("editor") {
-            val state by vm.uiState.collectAsState()
             state.videoUri?.let { uri ->
                 EditorScreen(
                     videoUri = uri,
@@ -46,17 +56,55 @@ fun FcApp() {
                     onExportClick = { navController.navigate("export") },
                     onBackClick = { navController.popBackStack() }
                 )
-            }
+            } ?: EditorFallbackScreen(
+                title = "请先选择视频",
+                actionLabel = "返回首页",
+                onAction = { navController.popBackStack("capture", inclusive = false) }
+            )
         }
         composable("export") {
-            ExportScreen(
-                viewModel = vm,
-                onBackToEdit = { navController.popBackStack() },
-                onStartNew = {
-                    vm.clearFields()
-                    navController.popBackStack("capture", inclusive = false)
-                }
-            )
+            if (state.videoUri == null) {
+                EditorFallbackScreen(
+                    title = "当前没有可导出的视频",
+                    actionLabel = "返回首页",
+                    onAction = {
+                        vm.clearProject()
+                        navController.popBackStack("capture", inclusive = false)
+                    }
+                )
+            } else {
+                ExportScreen(
+                    viewModel = vm,
+                    onBackToEdit = { navController.popBackStack() },
+                    onStartNew = {
+                        vm.clearProject()
+                        navController.popBackStack("capture", inclusive = false)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditorFallbackScreen(
+    title: String,
+    actionLabel: String,
+    onAction: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(text = title, style = MaterialTheme.typography.titleLarge)
+        Button(
+            onClick = onAction,
+            modifier = Modifier.padding(top = 16.dp)
+        ) {
+            Text(actionLabel)
         }
     }
 }

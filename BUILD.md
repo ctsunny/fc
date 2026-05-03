@@ -6,7 +6,7 @@ FC 是一款 Android 视频文字排版工具，支持：
 - 从相册导入或直接拍摄视频
 - 一键套用**电商 / 实体门店 / 活动促销**三类预设样式
 - 手指拖拽任意调整文字位置
-- 使用 FFmpeg 合成并导出成品视频
+- 使用 Android Media3 合成并导出成品视频
 
 ---
 
@@ -123,8 +123,8 @@ A: 在项目根目录新建 `local.properties`，内容为：
 sdk.dir=/path/to/your/Android/sdk
 ```
 
-**Q: FFmpeg 相关类找不到**  
-A: 确保 `ffmpeg-kit-android-min-gpl:6.0-2` 已成功下载；可在 Android Studio 底部 **Build** 面板查看详细错误。
+**Q: Media3 相关类找不到**  
+A: 确保 AndroidX Media3 依赖已成功下载；可在 Android Studio 底部 **Build** 面板查看详细错误。
 
 **Q: GitHub Actions 中 `gradlew: permission denied`**  
 A: 工作流已包含 `chmod +x gradlew` 步骤；若仍报错，请确认 gradlew 文件已提交且不在 .gitignore 中。

@@ -4,7 +4,9 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Paint
+import android.text.Layout
+import android.text.StaticLayout
+import android.text.TextPaint
 import android.graphics.Typeface
 import android.media.MediaMetadataRetriever
 import android.net.Uri
@@ -28,6 +30,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlin.math.ceil
 
 /**
  * Exports a video with text overlays using Android's media3-transformer library.
@@ -113,7 +116,10 @@ class VideoExporter(private val context: Context) {
                 ?.toIntOrNull() ?: DEFAULT_VIDEO_WIDTH
             val h = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
                 ?.toIntOrNull() ?: DEFAULT_VIDEO_HEIGHT
-            Pair(w, h)
+            val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+                ?.toIntOrNull()
+                ?: 0
+            if (rotation % 180 == 0) Pair(w, h) else Pair(h, w)
         } finally {
             retriever.release()
         }
@@ -130,20 +136,81 @@ class VideoExporter(private val context: Context) {
         for (field in overlays) {
             if (!field.isVisible || field.text.isBlank()) continue
 
-            val hexColor = field.colorHex.trimStart('#').padStart(6, '0')
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                textSize = field.fontSize
+            val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG).apply {
+                textSize = field.fontSize * context.resources.displayMetrics.scaledDensity
                 typeface = if (field.isBold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-                color = Color.parseColor("#$hexColor")
+                color = parseColor(field.colorHex, Color.WHITE)
                 if (field.hasShadow) setShadowLayer(4f, 2f, 2f, Color.BLACK)
             }
-            canvas.drawText(
-                field.text,
-                field.xFraction * width,
-                field.yFraction * height,
-                paint,
+
+            val lines = field.text.replace("\r\n", "\n").split('\n')
+            val layoutWidth = lines
+                .maxOfOrNull { line -> ceil(paint.measureText(line.ifEmpty { " " }).toDouble()).toInt() }
+                ?.coerceAtLeast(1)
+                ?: 1
+
+            val layout = StaticLayout.Builder
+                .obtain(field.text, 0, field.text.length, paint, layoutWidth)
+                .setAlignment(
+                    when (field.textAlign) {
+                        com.fc.app.data.model.TextAlignOption.LEFT -> Layout.Alignment.ALIGN_NORMAL
+                        com.fc.app.data.model.TextAlignOption.CENTER -> Layout.Alignment.ALIGN_CENTER
+                        com.fc.app.data.model.TextAlignOption.RIGHT -> Layout.Alignment.ALIGN_OPPOSITE
+                    }
+                )
+                .setIncludePad(false)
+                .build()
+
+            val anchorX = clampOverlayAnchorX(
+                desiredX = field.xFraction * width,
+                contentWidth = layout.width.toFloat(),
+                canvasWidth = width.toFloat(),
+                align = field.textAlign
             )
+            val anchorY = clampOverlayAnchorY(
+                desiredY = field.yFraction * height,
+                contentHeight = layout.height.toFloat(),
+                canvasHeight = height.toFloat()
+            )
+            val bounds = overlayBounds(
+                anchorX = anchorX,
+                anchorY = anchorY,
+                contentWidth = layout.width.toFloat(),
+                contentHeight = layout.height.toFloat(),
+                align = field.textAlign
+            )
+
+            if (field.hasBackground) {
+                val backgroundBounds = overlayBounds(
+                    anchorX = anchorX,
+                    anchorY = anchorY,
+                    contentWidth = layout.width.toFloat(),
+                    contentHeight = layout.height.toFloat(),
+                    align = field.textAlign,
+                    padding = 8f
+                )
+                val backgroundPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    color = parseColor(field.backgroundColorHex, Color.argb(136, 0, 0, 0))
+                }
+                canvas.drawRoundRect(
+                    backgroundBounds.left,
+                    backgroundBounds.top,
+                    backgroundBounds.right,
+                    backgroundBounds.bottom,
+                    16f,
+                    16f,
+                    backgroundPaint
+                )
+            }
+
+            canvas.save()
+            canvas.translate(bounds.left, bounds.top)
+            layout.draw(canvas)
+            canvas.restore()
         }
         return bitmap
     }
+
+    private fun parseColor(value: String, fallback: Int): Int =
+        runCatching { Color.parseColor(value) }.getOrDefault(fallback)
 }

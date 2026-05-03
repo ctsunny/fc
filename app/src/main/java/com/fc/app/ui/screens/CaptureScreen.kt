@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.launch
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -23,6 +24,8 @@ import java.io.File
 fun CaptureScreen(onVideoSelected: (Uri) -> Unit) {
     val context = LocalContext.current
     var tempVideoUri by remember { mutableStateOf<Uri?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
@@ -40,10 +43,15 @@ fun CaptureScreen(onVideoSelected: (Uri) -> Unit) {
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
             tempVideoUri = uri
             cameraLauncher.launch(uri)
+        } else {
+            scope.launch {
+                snackbarHostState.showSnackbar("需要相机权限后才能拍摄新视频")
+            }
         }
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("FC 视频排版") },

@@ -28,6 +28,7 @@ import com.fc.app.data.model.OverlayTextField
 import com.fc.app.data.model.TemplateCategory
 import com.fc.app.ui.components.DraggableCanvas
 import com.fc.app.ui.components.StylePanel
+import com.fc.app.util.readVideoDimensions
 import com.fc.app.viewmodel.EditorViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,6 +42,9 @@ fun EditorScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     var expandedFieldId by remember { mutableStateOf<String?>(null) }
+    val previewAspectRatio by produceState(initialValue = 16f / 9f, key1 = videoUri) {
+        value = readVideoDimensions(context, videoUri)?.aspectRatio?.takeIf { it > 0f } ?: (16f / 9f)
+    }
 
     Scaffold(
         topBar = {
@@ -65,7 +69,7 @@ fun EditorScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
+                    .aspectRatio(previewAspectRatio)
                     .background(Color.Black)
             ) {
                 AsyncImage(
@@ -91,7 +95,7 @@ fun EditorScreen(
 
             if (uiState.fields.isNotEmpty()) {
                 Text(
-                    "拖拽文字调整位置 · 点击文字展开编辑",
+                    "拖拽文字调整位置 · 点击文字展开编辑 · 预览比例跟随原视频",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)

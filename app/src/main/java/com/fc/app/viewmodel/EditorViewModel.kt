@@ -183,6 +183,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     }
 
 
+    fun selectField(fieldId: String?) {
         _uiState.update { it.copy(selectedFieldId = fieldId) }
     }
 

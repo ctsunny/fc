@@ -138,6 +138,7 @@ class VideoExporter(private val context: Context) {
 
             val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG).apply {
                 // Compose preview uses `fontSize.sp`, which becomes scaled pixels at render time.
+                // `scaledDensity` matches sp text sizing, while plain `density` would match dp sizing.
                 // Convert here so exported text matches the on-screen preview more closely.
                 textSize = field.fontSize * context.resources.displayMetrics.scaledDensity
                 typeface = if (field.isBold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT

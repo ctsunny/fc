@@ -10,7 +10,7 @@ data class VideoDimensions(
     val height: Int,
 ) {
     val aspectRatio: Float
-        get() = if (height <= 0) 16f / 9f else width.toFloat() / height.toFloat()
+        get() = if (height <= 0 || width <= 0) 16f / 9f else width.toFloat() / height.toFloat()
 }
 
 private const val TAG = "VideoMetadata"

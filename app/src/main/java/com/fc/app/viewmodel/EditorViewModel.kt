@@ -151,6 +151,8 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
 
                 _uiState.update { it.copy(exportProgress = 0.85f, exportMessage = "正在保存到相册...") }
                 val savedUri = saveToMediaStore(ctx, outputFile)
+                outputFile.delete()
+                outputFile = null
                 _uiState.update {
                     it.copy(
                         isExporting = false,
@@ -168,6 +170,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                         exportMessage = "导出失败：${e.localizedMessage ?: "请稍后重试"}"
                     )
                 }
+                outputFile?.delete()
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -177,9 +180,9 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                         exportMessage = "错误：${e.localizedMessage ?: "请稍后重试"}"
                     )
                 }
+                outputFile?.delete()
             } finally {
                 inputFile?.delete()
-                outputFile?.delete()
             }
         }
     }

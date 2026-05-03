@@ -22,6 +22,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.fc.app.ui.screens.CameraScreen
 import com.fc.app.ui.screens.CaptureScreen
 import com.fc.app.ui.screens.EditorScreen
 import com.fc.app.ui.screens.ExportScreen
@@ -52,6 +53,9 @@ fun FcApp() {
                 onVideoSelected = { uri, ratio ->
                     vm.setVideoUriWithRatio(uri, ratio)
                     navController.navigate("editor") { launchSingleTop = true }
+                },
+                onCameraClick = {
+                    navController.navigate("camera") { launchSingleTop = true }
                 },
                 onSettingsClick = {
                     navController.navigate("settings") { launchSingleTop = true }
@@ -118,6 +122,19 @@ fun FcApp() {
             PresetEditScreen(
                 viewModel = vm,
                 onSave = { navController.popBackStack() },
+                onCancel = { navController.popBackStack() }
+            )
+        }
+        composable("camera") {
+            val preferredRatio = remember { vm.loadPreferredCaptureRatio() }
+            CameraScreen(
+                onVideoSaved = { uri ->
+                    vm.setVideoUriWithRatio(uri, preferredRatio)
+                    navController.navigate("editor") {
+                        popUpTo("capture")
+                        launchSingleTop = true
+                    }
+                },
                 onCancel = { navController.popBackStack() }
             )
         }

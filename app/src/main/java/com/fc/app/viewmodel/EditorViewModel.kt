@@ -147,7 +147,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     fun exportVideo() {
         val state = _uiState.value
         val videoUri = state.videoUri ?: return
-        if (state.fields.none { it.isVisible && it.text.isNotBlank() }) {
+        if (state.fields.all { !it.isVisible || it.text.isBlank() }) {
             _uiState.update {
                 it.copy(
                     isExporting = false,

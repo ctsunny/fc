@@ -53,7 +53,11 @@ class VideoExporter(private val context: Context) {
         aspectRatioOption: AspectRatioOption,
     ) {
         val (videoWidth, videoHeight) = getVideoDimensions(inputFile)
-        val sourceAspectRatio = if (videoHeight > 0) videoWidth.toFloat() / videoHeight.toFloat() else DEFAULT_VIDEO_ASPECT_RATIO
+        val sourceAspectRatio = if (videoWidth > 0 && videoHeight > 0) {
+            videoWidth.toFloat() / videoHeight.toFloat()
+        } else {
+            DEFAULT_VIDEO_ASPECT_RATIO
+        }
         val outputAspectRatio = aspectRatioOption.resolve(sourceAspectRatio)
         val outputFrameSize = calculateOutputFrameSize(videoWidth, videoHeight, outputAspectRatio)
         val overlayBitmap = buildOverlayBitmap(overlays, outputFrameSize.width, outputFrameSize.height)
@@ -140,6 +144,7 @@ class VideoExporter(private val context: Context) {
             if (!field.isVisible || field.text.isBlank()) continue
 
             val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG).apply {
+                // field.fontSize stores the editor's logical text size in sp units.
                 // The editor preview currently renders text with Compose `fontSize.sp`
                 // in DraggableCanvas.textStyleFor().
                 // Export must therefore convert the stored logical font size with `scaledDensity`

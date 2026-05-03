@@ -1,3 +1,5 @@
+import java.time.Instant
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -10,7 +12,7 @@ val autoBuildId = providers.environmentVariable("GITHUB_RUN_NUMBER").orNull
     ?.takeIf { it.isNotBlank() }
     ?: providers.environmentVariable("BUILD_NUMBER").orNull
         ?.takeIf { it.isNotBlank() }
-    ?: (System.currentTimeMillis() / 60000L).toString()
+    ?: Instant.now().epochSecond.toString()
 val autoVersionCode = autoBuildId.toIntOrNull()?.coerceAtLeast(1) ?: 1
 val autoVersionName = "$baseVersionName+$autoBuildId"
 

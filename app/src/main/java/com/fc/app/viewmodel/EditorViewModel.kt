@@ -37,6 +37,8 @@ data class EditorUiState(
     val selectedTemplate: StyleTemplate? = null,
     val aspectRatioOption: AspectRatioOption = AspectRatioOption.ORIGINAL,
     val fadeDurationSecs: Int = UserPreferences.DEFAULT_FADE_SECS,
+    val fruitFilter1Enabled: Boolean = false,
+    val fruitFilter2Enabled: Boolean = false,
     val previewCanvasWidth: Int = 0,
     val isExporting: Boolean = false,
     val exportProgress: Float = 0f,
@@ -76,6 +78,8 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                 selectedTemplate = null,
                 aspectRatioOption = lastRatio,
                 fadeDurationSecs = lastFade,
+                fruitFilter1Enabled = userPrefs.loadFruitFilter1Enabled(),
+                fruitFilter2Enabled = userPrefs.loadFruitFilter2Enabled(),
                 isExporting = false,
                 exportProgress = 0f,
                 exportMessage = "",
@@ -139,6 +143,8 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             fields = state.fields,
             aspectRatio = state.aspectRatioOption,
             fadeSecs = state.fadeDurationSecs,
+            fruitFilter1Enabled = state.fruitFilter1Enabled,
+            fruitFilter2Enabled = state.fruitFilter2Enabled,
         )
     }
 
@@ -154,6 +160,8 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                 selectedTemplate = null,
                 aspectRatioOption = draft.aspectRatioOption(),
                 fadeDurationSecs = draft.fadeSecs,
+                fruitFilter1Enabled = draft.fruitFilter1Enabled,
+                fruitFilter2Enabled = draft.fruitFilter2Enabled,
                 isExporting = false,
                 exportProgress = 0f,
                 exportMessage = "",
@@ -185,6 +193,8 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                 selectedTemplate = null,
                 aspectRatioOption = preferredRatio,
                 fadeDurationSecs = lastFade,
+                fruitFilter1Enabled = userPrefs.loadFruitFilter1Enabled(),
+                fruitFilter2Enabled = userPrefs.loadFruitFilter2Enabled(),
                 isExporting = false,
                 exportProgress = 0f,
                 exportMessage = "",
@@ -210,6 +220,14 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateFadeDurationSecs(secs: Int) {
         _uiState.update { it.copy(fadeDurationSecs = secs.coerceIn(0, 10)) }
+    }
+
+    fun toggleFruitFilter1() {
+        _uiState.update { it.copy(fruitFilter1Enabled = !it.fruitFilter1Enabled) }
+    }
+
+    fun toggleFruitFilter2() {
+        _uiState.update { it.copy(fruitFilter2Enabled = !it.fruitFilter2Enabled) }
     }
 
     fun updateFieldText(fieldId: String, text: String) {
@@ -364,6 +382,8 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                     aspectRatioOption = state.aspectRatioOption,
                     fadeDurationSecs = state.fadeDurationSecs,
                     previewCanvasWidth = state.previewCanvasWidth,
+                    fruitFilter1Enabled = state.fruitFilter1Enabled,
+                    fruitFilter2Enabled = state.fruitFilter2Enabled,
                 )
 
                 _uiState.update { it.copy(exportProgress = 0.85f, exportMessage = "正在保存到相册...") }
@@ -412,6 +432,8 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         userPrefs.saveLastFields(state.fields)
         userPrefs.saveLastAspectRatio(state.aspectRatioOption)
         userPrefs.saveFadeDurationSecs(state.fadeDurationSecs)
+        userPrefs.saveFruitFilter1Enabled(state.fruitFilter1Enabled)
+        userPrefs.saveFruitFilter2Enabled(state.fruitFilter2Enabled)
     }
 
     private fun copyUriToCache(ctx: Context, uri: Uri): File {

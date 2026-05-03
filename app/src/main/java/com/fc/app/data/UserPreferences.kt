@@ -74,6 +74,22 @@ class UserPreferences(context: Context) {
             .apply()
     }
 
+    // ─── Fruit filter toggles ─────────────────────────────────────────────────
+
+    fun saveFruitFilter1Enabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_FRUIT_FILTER_1, enabled).apply()
+    }
+
+    fun loadFruitFilter1Enabled(): Boolean =
+        prefs.getBoolean(KEY_FRUIT_FILTER_1, false)
+
+    fun saveFruitFilter2Enabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_FRUIT_FILTER_2, enabled).apply()
+    }
+
+    fun loadFruitFilter2Enabled(): Boolean =
+        prefs.getBoolean(KEY_FRUIT_FILTER_2, false)
+
     // ─── Preferred capture aspect ratio ──────────────────────────────────────
 
     fun savePreferredCaptureRatio(option: AspectRatioOption) {
@@ -87,8 +103,8 @@ class UserPreferences(context: Context) {
 
     // ─── Draft project ────────────────────────────────────────────────────────
 
-    fun saveDraft(videoUriString: String, fields: List<OverlayTextField>, aspectRatio: AspectRatioOption, fadeSecs: Int) {
-        val draft = DraftProject(videoUriString, fields, aspectRatio.name, fadeSecs)
+    fun saveDraft(videoUriString: String, fields: List<OverlayTextField>, aspectRatio: AspectRatioOption, fadeSecs: Int, fruitFilter1Enabled: Boolean = false, fruitFilter2Enabled: Boolean = false) {
+        val draft = DraftProject(videoUriString, fields, aspectRatio.name, fadeSecs, fruitFilter1Enabled, fruitFilter2Enabled)
         prefs.edit()
             .putString(KEY_DRAFT, Json.encodeToString(draft))
             .apply()
@@ -119,6 +135,8 @@ class UserPreferences(context: Context) {
         private const val KEY_PRESET_NAMES = "preset_names"
         private const val KEY_CAPTURE_RATIO = "capture_ratio"
         private const val KEY_DRAFT = "draft_project"
+        private const val KEY_FRUIT_FILTER_1 = "fruit_filter_1"
+        private const val KEY_FRUIT_FILTER_2 = "fruit_filter_2"
         const val DEFAULT_FADE_SECS = 3
     }
 }
@@ -131,6 +149,8 @@ data class DraftProject(
     val fields: List<OverlayTextField>,
     val aspectRatioName: String,
     val fadeSecs: Int,
+    val fruitFilter1Enabled: Boolean = false,
+    val fruitFilter2Enabled: Boolean = false,
 ) {
     fun aspectRatioOption(): AspectRatioOption =
         runCatching { AspectRatioOption.valueOf(aspectRatioName) }.getOrDefault(AspectRatioOption.ORIGINAL)

@@ -45,9 +45,13 @@ fun CaptureScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    // Use rememberUpdatedState so launcher callbacks always read the latest selectedRatio
+    // even if the user changes the chip selection while the camera/gallery is open.
+    val currentSelectedRatio by rememberUpdatedState(selectedRatio)
+
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
-    ) { uri: Uri? -> uri?.let { onVideoSelected(it, selectedRatio) } }
+    ) { uri: Uri? -> uri?.let { onVideoSelected(it, currentSelectedRatio) } }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CaptureVideo()
@@ -60,7 +64,7 @@ fun CaptureScreen(
                 scope.launch(Dispatchers.IO) {
                     saveVideoFileToMediaStore(context, file)
                 }
-                onVideoSelected(uri, selectedRatio)
+                onVideoSelected(uri, currentSelectedRatio)
             }
         } else {
             tempVideoFile?.delete()

@@ -59,6 +59,8 @@ class VideoExporter(private val context: Context) {
         aspectRatioOption: AspectRatioOption,
         fadeDurationSecs: Int = 0,
         previewCanvasWidth: Int = 0,
+        fruitFilter1Enabled: Boolean = false,
+        fruitFilter2Enabled: Boolean = false,
     ) {
         val (videoWidth, videoHeight) = getVideoDimensions(inputFile)
         val videoDurationUs = getVideoDurationUs(inputFile)
@@ -79,10 +81,12 @@ class VideoExporter(private val context: Context) {
                 BitmapOverlay.createStaticBitmapOverlay(overlayBitmap)
             }
             val overlayEffect = OverlayEffect(ImmutableList.of(bitmapOverlay))
-            val videoEffects = mutableListOf<Effect>(
-                Presentation.createForAspectRatio(outputAspectRatio, 0),
-                overlayEffect,
-            )
+            val videoEffects = mutableListOf<Effect>()
+            // Fruit colour-grading filters are applied first (to the raw video signal)
+            if (fruitFilter1Enabled) videoEffects.addAll(FruitFilter.WARM_FRUIT.buildEffects())
+            if (fruitFilter2Enabled) videoEffects.addAll(FruitFilter.FRESH_FRUIT.buildEffects())
+            videoEffects.add(Presentation.createForAspectRatio(outputAspectRatio, 0))
+            videoEffects.add(overlayEffect)
             val effects = Effects(
                 /* audioProcessors= */ emptyList(),
                 /* videoEffects= */ videoEffects,

@@ -10,6 +10,8 @@ import android.text.TextPaint
 import android.graphics.Typeface
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import androidx.annotation.OptIn
 import androidx.media3.common.Effect
 import androidx.media3.common.MediaItem
@@ -87,7 +89,7 @@ class VideoExporter(private val context: Context) {
                         composition: Composition,
                         exportResult: ExportResult,
                     ) {
-                        overlayBitmap.recycle()
+                        if (!overlayBitmap.isRecycled) overlayBitmap.recycle()
                         continuation.resume(Unit)
                     }
 
@@ -96,13 +98,18 @@ class VideoExporter(private val context: Context) {
                         exportResult: ExportResult,
                         exportException: ExportException,
                     ) {
-                        overlayBitmap.recycle()
+                        if (!overlayBitmap.isRecycled) overlayBitmap.recycle()
                         continuation.resumeWithException(exportException)
                     }
                 })
 
                 transformer.start(editedMediaItem, outputFile.absolutePath)
-                continuation.invokeOnCancellation { transformer.cancel() }
+                continuation.invokeOnCancellation {
+                    // Recycle the bitmap regardless of which thread triggers cancellation.
+                    if (!overlayBitmap.isRecycled) overlayBitmap.recycle()
+                    // Transformer.cancel() must be called on the main thread.
+                    Handler(Looper.getMainLooper()).post { transformer.cancel() }
+                }
             }
         }
     }
@@ -119,6 +126,10 @@ class VideoExporter(private val context: Context) {
                 ?.toIntOrNull()
                 ?: 0
             if (rotation % 180 == 0) Pair(w, h) else Pair(h, w)
+        } catch (e: Exception) {
+            // Fallback to a safe default when the file cannot be probed
+            // (e.g. unsupported codec, corrupt file, or platform restriction).
+            Pair(DEFAULT_VIDEO_WIDTH, DEFAULT_VIDEO_HEIGHT)
         } finally {
             retriever.release()
         }

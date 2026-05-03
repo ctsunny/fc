@@ -23,6 +23,7 @@ import java.io.File
 @Composable
 fun CaptureScreen(onVideoSelected: (Uri) -> Unit) {
     val context = LocalContext.current
+    var tempVideoFile by remember { mutableStateOf<File?>(null) }
     var tempVideoUri by remember { mutableStateOf<Uri?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -33,7 +34,16 @@ fun CaptureScreen(onVideoSelected: (Uri) -> Unit) {
 
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CaptureVideo()
-    ) { success -> if (success) tempVideoUri?.let { onVideoSelected(it) } }
+    ) { success ->
+        if (success) {
+            tempVideoUri?.let { onVideoSelected(it) }
+        } else {
+            // User cancelled or capture failed – delete the pre-allocated temp file.
+            tempVideoFile?.delete()
+            tempVideoFile = null
+            tempVideoUri = null
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -41,6 +51,7 @@ fun CaptureScreen(onVideoSelected: (Uri) -> Unit) {
         if (granted) {
             val file = File(context.cacheDir, "capture_${System.currentTimeMillis()}.mp4")
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+            tempVideoFile = file
             tempVideoUri = uri
             cameraLauncher.launch(uri)
         } else {

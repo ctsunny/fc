@@ -77,7 +77,8 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun applyPresetByCategory(category: TemplateCategory) {
-        applyTemplate(PresetTemplates.all.first { it.category == category })
+        val template = PresetTemplates.all.firstOrNull { it.category == category } ?: return
+        applyTemplate(template)
     }
 
     fun selectField(fieldId: String?) {
@@ -146,6 +147,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     @OptIn(UnstableApi::class)
     fun exportVideo() {
         val state = _uiState.value
+        if (state.isExporting) return   // guard against concurrent exports
         val videoUri = state.videoUri ?: return
         if (state.fields.all { !it.isVisible || it.text.isBlank() }) {
             _uiState.update {

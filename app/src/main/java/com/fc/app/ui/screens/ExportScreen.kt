@@ -25,7 +25,7 @@ fun ExportScreen(
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
-        if (!uiState.isExporting && uiState.exportedFileUri == null && uiState.exportMessage.isEmpty()) {
+        if (!uiState.isExporting && uiState.exportedFileUri == null) {
             viewModel.exportVideo()
         }
     }

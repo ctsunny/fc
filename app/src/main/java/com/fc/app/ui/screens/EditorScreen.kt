@@ -191,7 +191,7 @@ private fun FieldRow(
                 onFontSizeChange = onSize,
                 onColorChange = onColor,
                 onBoldChange = onBold,
-                modifier = Modifier.padding(horizontal = 16.dp, bottom = 8.dp)
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
             )
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))

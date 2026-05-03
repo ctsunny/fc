@@ -67,8 +67,8 @@ class VideoExporter(private val context: Context) {
             )
             val overlayEffect = OverlayEffect(ImmutableList.of(bitmapOverlay))
             val effects = Effects(
-                /* audioProcessors= */ ImmutableList.of(),
-                /* videoEffects= */ ImmutableList.of(overlayEffect),
+                /* audioProcessors= */ emptyList(),
+                /* videoEffects= */ listOf(overlayEffect),
             )
 
             val editedMediaItem = EditedMediaItem.Builder(

@@ -29,6 +29,7 @@ import com.fc.app.data.model.TextAlignOption
 import com.fc.app.util.clampOverlayAnchorX
 import com.fc.app.util.clampOverlayAnchorY
 import com.fc.app.util.overlayBounds
+import com.fc.app.util.parseColorOrDefault
 
 /**
  * 可拖拽文字覆层画布
@@ -166,7 +167,7 @@ private fun hitTest(fields: List<MeasuredOverlayField>, tap: Offset): String? =
 private fun textStyleFor(field: OverlayTextField) = TextStyle(
     fontSize = field.fontSize.sp,
     fontWeight = if (field.isBold) FontWeight.Bold else FontWeight.Normal,
-    color = runCatching { Color(android.graphics.Color.parseColor(field.colorHex)) }.getOrDefault(Color.White),
+    color = Color(parseColorOrDefault(field.colorHex, android.graphics.Color.WHITE)),
     textAlign = when (field.textAlign) {
         TextAlignOption.CENTER -> TextAlign.Center
         TextAlignOption.RIGHT -> TextAlign.End
@@ -191,8 +192,7 @@ private fun DrawScope.drawOverlayText(
 
     // Background
     if (field.hasBackground) {
-        val bgColor = runCatching { Color(android.graphics.Color.parseColor(field.backgroundColorHex)) }
-            .getOrDefault(Color(0x88000000.toInt()))
+        val bgColor = Color(parseColorOrDefault(field.backgroundColorHex, android.graphics.Color.argb(136, 0, 0, 0)))
         val bgBounds = overlayBounds(
             anchorX = measuredField.anchorX,
             anchorY = measuredField.anchorY,

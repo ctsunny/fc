@@ -137,12 +137,15 @@ class VideoExporter(private val context: Context) {
             if (!field.isVisible || field.text.isBlank()) continue
 
             val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG).apply {
+                // Match Compose preview sizing, which uses sp-based text.
                 textSize = field.fontSize * context.resources.displayMetrics.scaledDensity
                 typeface = if (field.isBold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-                color = parseColor(field.colorHex, Color.WHITE)
+                color = parseColorOrDefault(field.colorHex, Color.WHITE)
                 if (field.hasShadow) setShadowLayer(4f, 2f, 2f, Color.BLACK)
             }
 
+            // StaticLayout needs a concrete width; use the widest explicit line so multiline
+            // preview/export placement stays consistent without stretching shorter lines.
             val lines = field.text.replace("\r\n", "\n").split('\n')
             val layoutWidth = lines
                 .maxOfOrNull { line -> ceil(paint.measureText(line.ifEmpty { " " }).toDouble()).toInt() }
@@ -190,7 +193,7 @@ class VideoExporter(private val context: Context) {
                     padding = 8f
                 )
                 val backgroundPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                    color = parseColor(field.backgroundColorHex, Color.argb(136, 0, 0, 0))
+                    color = parseColorOrDefault(field.backgroundColorHex, Color.argb(136, 0, 0, 0))
                 }
                 canvas.drawRoundRect(
                     backgroundBounds.left,
@@ -210,7 +213,4 @@ class VideoExporter(private val context: Context) {
         }
         return bitmap
     }
-
-    private fun parseColor(value: String, fallback: Int): Int =
-        runCatching { Color.parseColor(value) }.getOrDefault(fallback)
 }

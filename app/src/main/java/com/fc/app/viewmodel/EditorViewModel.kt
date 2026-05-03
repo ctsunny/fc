@@ -183,7 +183,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     private fun copyUriToCache(ctx: Context, uri: Uri): File {
         val file = File(ctx.cacheDir, "input_${System.currentTimeMillis()}.mp4")
         val inputStream = ctx.contentResolver.openInputStream(uri)
-            ?: throw IllegalStateException("无法读取所选视频")
+            ?: throw IllegalStateException("无法打开所选视频输入流")
         inputStream.use { input ->
             file.outputStream().use { input.copyTo(it) }
         }

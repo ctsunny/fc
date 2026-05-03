@@ -14,7 +14,7 @@ val autoBuildId = providers.environmentVariable("GITHUB_RUN_NUMBER").orNull
     ?.takeIf { it.isNotBlank() }
     ?: providers.environmentVariable("BUILD_NUMBER").orNull
         ?.takeIf { it.isNotBlank() }
-    ?: LocalDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyDDDHHmm"))
+    ?: LocalDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyMMddHH"))
 val autoVersionCode = autoBuildId.toIntOrNull()?.coerceAtLeast(1) ?: 1
 val autoVersionName = "$baseVersionName+$autoBuildId"
 

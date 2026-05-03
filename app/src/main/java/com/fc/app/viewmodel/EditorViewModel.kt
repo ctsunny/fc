@@ -7,9 +7,11 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.fc.app.util.VideoExporter
+import com.fc.app.util.AspectRatioOption
 import com.fc.app.data.PresetTemplates
 import com.fc.app.data.model.OverlayTextField
 import com.fc.app.data.model.StyleTemplate
@@ -30,6 +32,7 @@ data class EditorUiState(
     val fields: List<OverlayTextField> = emptyList(),
     val selectedFieldId: String? = null,
     val selectedTemplate: StyleTemplate? = null,
+    val aspectRatioOption: AspectRatioOption = AspectRatioOption.ORIGINAL,
     val isExporting: Boolean = false,
     val exportProgress: Float = 0f,
     val exportMessage: String = "",
@@ -37,16 +40,40 @@ data class EditorUiState(
 )
 
 class EditorViewModel(application: Application) : AndroidViewModel(application) {
+    private companion object {
+        private const val TAG = "EditorViewModel"
+    }
 
     private val _uiState = MutableStateFlow(EditorUiState())
     val uiState: StateFlow<EditorUiState> = _uiState.asStateFlow()
 
     fun setVideoUri(uri: Uri) {
-        _uiState.update { it.copy(videoUri = uri) }
+        _uiState.update {
+            it.copy(
+                videoUri = uri,
+                fields = emptyList(),
+                selectedFieldId = null,
+                selectedTemplate = null,
+                aspectRatioOption = AspectRatioOption.ORIGINAL,
+                isExporting = false,
+                exportProgress = 0f,
+                exportMessage = "",
+                exportedFileUri = null,
+            )
+        }
     }
 
     fun applyTemplate(template: StyleTemplate) {
-        _uiState.update { it.copy(fields = template.fields.map { f -> f.copy() }, selectedTemplate = template) }
+        _uiState.update {
+            it.copy(
+                fields = template.fields.map { field -> field.copy() },
+                selectedFieldId = null,
+                selectedTemplate = template,
+                exportProgress = 0f,
+                exportMessage = "",
+                exportedFileUri = null
+            )
+        }
     }
 
     fun applyPresetByCategory(category: TemplateCategory) {
@@ -55,6 +82,16 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
 
     fun selectField(fieldId: String?) {
         _uiState.update { it.copy(selectedFieldId = fieldId) }
+    }
+
+    fun updateAspectRatioOption(option: AspectRatioOption) {
+        _uiState.update {
+            it.copy(
+                aspectRatioOption = option,
+                exportMessage = "",
+                exportedFileUri = null
+            )
+        }
     }
 
     fun updateFieldText(fieldId: String, text: String) {
@@ -89,14 +126,38 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun clearFields() {
-        _uiState.update { it.copy(fields = emptyList(), selectedFieldId = null, exportedFileUri = null, exportMessage = "") }
+        _uiState.update {
+            it.copy(
+                fields = emptyList(),
+                selectedFieldId = null,
+                selectedTemplate = null,
+                isExporting = false,
+                exportProgress = 0f,
+                exportMessage = "",
+                exportedFileUri = null
+            )
+        }
+    }
+
+    fun clearProject() {
+        _uiState.value = EditorUiState()
     }
 
     @OptIn(UnstableApi::class)
     fun exportVideo() {
         val state = _uiState.value
         val videoUri = state.videoUri ?: return
-        if (state.fields.isEmpty()) return
+        if (state.fields.all { !it.isVisible || it.text.isBlank() }) {
+            _uiState.update {
+                it.copy(
+                    isExporting = false,
+                    exportProgress = 0f,
+                    exportedFileUri = null,
+                    exportMessage = "请至少保留一个可见文字后再导出"
+                )
+            }
+            return
+        }
 
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isExporting = true, exportProgress = 0f, exportMessage = "准备导出...") }
@@ -104,22 +165,51 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             var outputFile: File? = null
             try {
                 val ctx = getApplication<Application>()
+                _uiState.update { it.copy(exportProgress = 0.15f, exportMessage = "正在读取视频...") }
                 inputFile = copyUriToCache(ctx, videoUri)
                 outputFile = File(ctx.cacheDir, "output_${System.currentTimeMillis()}.mp4")
 
-                _uiState.update { it.copy(exportMessage = "合成中，请稍候...") }
+                _uiState.update { it.copy(exportProgress = 0.45f, exportMessage = "合成中，请稍候...") }
 
-                VideoExporter(ctx).export(inputFile, outputFile, state.fields)
+                VideoExporter(ctx).export(
+                    inputFile = inputFile,
+                    outputFile = outputFile,
+                    overlays = state.fields,
+                    aspectRatioOption = state.aspectRatioOption,
+                )
 
+                _uiState.update { it.copy(exportProgress = 0.85f, exportMessage = "正在保存到相册...") }
                 val savedUri = saveToMediaStore(ctx, outputFile)
+                outputFile.delete()
+                outputFile = null
                 _uiState.update {
-                    it.copy(isExporting = false, exportProgress = 1f,
-                        exportMessage = "导出成功！", exportedFileUri = savedUri)
+                    it.copy(
+                        isExporting = false,
+                        exportProgress = 1f,
+                        exportMessage = "导出成功！",
+                        exportedFileUri = savedUri
+                    )
                 }
             } catch (e: ExportException) {
-                _uiState.update { it.copy(isExporting = false, exportMessage = "导出失败：${e.message}") }
+                _uiState.update {
+                    it.copy(
+                        isExporting = false,
+                        exportProgress = 0f,
+                        exportedFileUri = null,
+                        exportMessage = "导出失败：${e.message ?: "请稍后重试"}"
+                    )
+                }
+                outputFile?.delete()
             } catch (e: Exception) {
-                _uiState.update { it.copy(isExporting = false, exportMessage = "错误：${e.message}") }
+                _uiState.update {
+                    it.copy(
+                        isExporting = false,
+                        exportProgress = 0f,
+                        exportedFileUri = null,
+                        exportMessage = "错误：${e.message ?: "请稍后重试"}"
+                    )
+                }
+                outputFile?.delete()
             } finally {
                 inputFile?.delete()
             }
@@ -128,13 +218,15 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun copyUriToCache(ctx: Context, uri: Uri): File {
         val file = File(ctx.cacheDir, "input_${System.currentTimeMillis()}.mp4")
-        ctx.contentResolver.openInputStream(uri)?.use { input ->
+        val inputStream = ctx.contentResolver.openInputStream(uri)
+            ?: throw IllegalStateException("无法打开所选视频输入流")
+        inputStream.use { input ->
             file.outputStream().use { input.copyTo(it) }
         }
         return file
     }
 
-    private fun saveToMediaStore(ctx: Context, file: File): Uri? {
+    private fun saveToMediaStore(ctx: Context, file: File): Uri {
         val values = ContentValues().apply {
             put(MediaStore.Video.Media.DISPLAY_NAME, file.name)
             put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
@@ -144,17 +236,26 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         val uri = ctx.contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
-        uri?.let {
-            ctx.contentResolver.openOutputStream(it)?.use { out ->
-                file.inputStream().use { inp -> inp.copyTo(out) }
+            ?: throw IllegalStateException("无法创建系统相册文件")
+
+        try {
+            val outputStream = ctx.contentResolver.openOutputStream(uri)
+                ?: throw IllegalStateException("无法写入系统相册文件")
+            outputStream.use { out ->
+                file.inputStream().use { inp ->
+                    inp.copyTo(out)
+                }
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 values.clear()
                 values.put(MediaStore.Video.Media.IS_PENDING, 0)
-                ctx.contentResolver.update(it, values, null, null)
+                ctx.contentResolver.update(uri, values, null, null)
             }
+            return uri
+        } catch (e: Exception) {
+            Log.w(TAG, "Cleaning up failed MediaStore export entry: $uri", e)
+            ctx.contentResolver.delete(uri, null, null)
+            throw e
         }
-        file.delete()
-        return uri
     }
 }

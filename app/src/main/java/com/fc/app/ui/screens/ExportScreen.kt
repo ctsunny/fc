@@ -53,7 +53,10 @@ fun ExportScreen(
                     Spacer(Modifier.height(24.dp))
                     Text(uiState.exportMessage, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
                     Spacer(Modifier.height(12.dp))
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    LinearProgressIndicator(
+                        progress = { uiState.exportProgress.coerceIn(0f, 1f) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
 
                 uiState.exportedFileUri != null -> {

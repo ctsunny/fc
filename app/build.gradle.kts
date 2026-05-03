@@ -1,9 +1,20 @@
+import java.time.Instant
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 }
+
+val baseVersionName = "1.0.0"
+val autoBuildId = providers.environmentVariable("GITHUB_RUN_NUMBER").orNull
+    ?.takeIf { it.isNotBlank() }
+    ?: providers.environmentVariable("BUILD_NUMBER").orNull
+        ?.takeIf { it.isNotBlank() }
+    ?: Instant.now().epochSecond.toString()
+val autoVersionCode = autoBuildId.toIntOrNull()?.coerceAtLeast(1) ?: 1
+val autoVersionName = "$baseVersionName+$autoBuildId"
 
 android {
     namespace = "com.fc.app"
@@ -13,8 +24,8 @@ android {
         applicationId = "com.fc.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = autoVersionCode
+        versionName = autoVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

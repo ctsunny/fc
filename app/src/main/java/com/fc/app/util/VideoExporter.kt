@@ -4,16 +4,20 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Paint
+import android.text.Layout
+import android.text.StaticLayout
+import android.text.TextPaint
 import android.graphics.Typeface
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.annotation.OptIn
+import androidx.media3.common.Effect
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.BitmapOverlay
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.OverlaySettings
+import androidx.media3.effect.Presentation
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.Effects
@@ -28,6 +32,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlin.math.ceil
 
 /**
  * Exports a video with text overlays using Android's media3-transformer library.
@@ -35,11 +40,6 @@ import kotlin.coroutines.resumeWithException
  */
 @OptIn(UnstableApi::class)
 class VideoExporter(private val context: Context) {
-
-    private companion object {
-        const val DEFAULT_VIDEO_WIDTH = 1080
-        const val DEFAULT_VIDEO_HEIGHT = 1920
-    }
 
     /**
      * Applies [overlays] to [inputFile] and writes the result to [outputFile].
@@ -50,13 +50,19 @@ class VideoExporter(private val context: Context) {
         inputFile: File,
         outputFile: File,
         overlays: List<OverlayTextField>,
+        aspectRatioOption: AspectRatioOption,
     ) {
         val (videoWidth, videoHeight) = getVideoDimensions(inputFile)
-        val overlayBitmap = buildOverlayBitmap(overlays, videoWidth, videoHeight)
+        val sourceAspectRatio = if (videoWidth > 0 && videoHeight > 0) {
+            videoWidth.toFloat() / videoHeight.toFloat()
+        } else {
+            DEFAULT_VIDEO_ASPECT_RATIO
+        }
+        val outputAspectRatio = aspectRatioOption.resolve(sourceAspectRatio)
+        val outputFrameSize = calculateOutputFrameSize(videoWidth, videoHeight, outputAspectRatio)
+        val overlayBitmap = buildOverlayBitmap(overlays, outputFrameSize.width, outputFrameSize.height)
 
         withContext(Dispatchers.Main) {
-            // OverlaySettings: scale (2, 2) places the overlay across the full NDC frame
-            // (-1,-1)..(1,1) so it covers the video frame edge-to-edge.
             val overlaySettings = OverlaySettings.Builder()
                 .setScale(2f, 2f)
                 .build()
@@ -66,9 +72,13 @@ class VideoExporter(private val context: Context) {
                 overlaySettings,
             )
             val overlayEffect = OverlayEffect(ImmutableList.of(bitmapOverlay))
+            val videoEffects = mutableListOf<Effect>(
+                Presentation.createForAspectRatio(outputAspectRatio, 0),
+                overlayEffect,
+            )
             val effects = Effects(
                 /* audioProcessors= */ emptyList(),
-                /* videoEffects= */ listOf(overlayEffect),
+                /* videoEffects= */ videoEffects,
             )
 
             val editedMediaItem = EditedMediaItem.Builder(
@@ -113,7 +123,10 @@ class VideoExporter(private val context: Context) {
                 ?.toIntOrNull() ?: DEFAULT_VIDEO_WIDTH
             val h = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
                 ?.toIntOrNull() ?: DEFAULT_VIDEO_HEIGHT
-            Pair(w, h)
+            val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+                ?.toIntOrNull()
+                ?: 0
+            if (rotation % 180 == 0) Pair(w, h) else Pair(h, w)
         } finally {
             retriever.release()
         }
@@ -130,19 +143,85 @@ class VideoExporter(private val context: Context) {
         for (field in overlays) {
             if (!field.isVisible || field.text.isBlank()) continue
 
-            val hexColor = field.colorHex.trimStart('#').padStart(6, '0')
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                textSize = field.fontSize
+            val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG).apply {
+                // field.fontSize stores the editor's logical text size in sp units.
+                // The editor preview currently renders text with Compose `fontSize.sp`
+                // in DraggableCanvas.textStyleFor().
+                // Export must therefore convert the stored logical font size with `scaledDensity`
+                // so StaticLayout uses the same sp-based sizing model; if preview sizing changes,
+                // this conversion should be updated together.
+                textSize = field.fontSize * context.resources.displayMetrics.scaledDensity
                 typeface = if (field.isBold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-                color = Color.parseColor("#$hexColor")
+                color = parseColorOrDefault(field.colorHex, Color.WHITE)
                 if (field.hasShadow) setShadowLayer(4f, 2f, 2f, Color.BLACK)
             }
-            canvas.drawText(
-                field.text,
-                field.xFraction * width,
-                field.yFraction * height,
-                paint,
+
+            // StaticLayout needs a concrete width; use the widest explicit line so multiline
+            // preview/export placement stays consistent without stretching shorter lines.
+            val lines = field.text.lines()
+            val layoutWidth = lines
+                .maxOfOrNull { line -> ceil(paint.measureText(line.ifEmpty { " " }).toDouble()).toInt() }
+                ?.coerceAtLeast(1)
+                ?: 1
+
+            val layout = StaticLayout.Builder
+                .obtain(field.text, 0, field.text.length, paint, layoutWidth)
+                .setAlignment(
+                    when (field.textAlign) {
+                        com.fc.app.data.model.TextAlignOption.LEFT -> Layout.Alignment.ALIGN_NORMAL
+                        com.fc.app.data.model.TextAlignOption.CENTER -> Layout.Alignment.ALIGN_CENTER
+                        com.fc.app.data.model.TextAlignOption.RIGHT -> Layout.Alignment.ALIGN_OPPOSITE
+                    }
+                )
+                .setIncludePad(false)
+                .build()
+
+            val anchorX = clampOverlayAnchorX(
+                desiredX = field.xFraction * width,
+                contentWidth = layout.width.toFloat(),
+                canvasWidth = width.toFloat(),
+                align = field.textAlign
             )
+            val anchorY = clampOverlayAnchorY(
+                desiredY = field.yFraction * height,
+                contentHeight = layout.height.toFloat(),
+                canvasHeight = height.toFloat()
+            )
+            val bounds = overlayBounds(
+                anchorX = anchorX,
+                anchorY = anchorY,
+                contentWidth = layout.width.toFloat(),
+                contentHeight = layout.height.toFloat(),
+                align = field.textAlign
+            )
+
+            if (field.hasBackground) {
+                val backgroundBounds = overlayBounds(
+                    anchorX = anchorX,
+                    anchorY = anchorY,
+                    contentWidth = layout.width.toFloat(),
+                    contentHeight = layout.height.toFloat(),
+                    align = field.textAlign,
+                    padding = 8f
+                )
+                val backgroundPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    color = parseColorOrDefault(field.backgroundColorHex, Color.argb(136, 0, 0, 0))
+                }
+                canvas.drawRoundRect(
+                    backgroundBounds.left,
+                    backgroundBounds.top,
+                    backgroundBounds.right,
+                    backgroundBounds.bottom,
+                    16f,
+                    16f,
+                    backgroundPaint
+                )
+            }
+
+            canvas.save()
+            canvas.translate(bounds.left, bounds.top)
+            layout.draw(canvas)
+            canvas.restore()
         }
         return bitmap
     }

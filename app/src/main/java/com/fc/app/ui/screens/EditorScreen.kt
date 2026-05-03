@@ -20,14 +20,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.decode.VideoFrameDecoder
 import com.fc.app.data.model.OverlayTextField
 import com.fc.app.data.model.TemplateCategory
+import com.fc.app.R
 import com.fc.app.ui.components.DraggableCanvas
 import com.fc.app.ui.components.StylePanel
+import com.fc.app.util.AspectRatioOption
+import com.fc.app.util.DEFAULT_VIDEO_ASPECT_RATIO
+import com.fc.app.util.readVideoDimensions
 import com.fc.app.viewmodel.EditorViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,6 +46,10 @@ fun EditorScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     var expandedFieldId by remember { mutableStateOf<String?>(null) }
+    val sourceAspectRatio by produceState(initialValue = DEFAULT_VIDEO_ASPECT_RATIO, key1 = videoUri) {
+        value = readVideoDimensions(context, videoUri)?.aspectRatio?.takeIf { it > 0f } ?: DEFAULT_VIDEO_ASPECT_RATIO
+    }
+    val previewAspectRatio = uiState.aspectRatioOption.resolve(sourceAspectRatio)
 
     Scaffold(
         topBar = {
@@ -61,11 +70,15 @@ fun EditorScreen(
                 TemplateSelectorRow { cat -> viewModel.applyPresetByCategory(cat) }
             }
 
-            // 视频预览 + 文字覆层（16:9）
+            AspectRatioSelectorRow(
+                selected = uiState.aspectRatioOption,
+                onSelected = viewModel::updateAspectRatioOption
+            )
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
+                    .aspectRatio(previewAspectRatio)
                     .background(Color.Black)
             ) {
                 AsyncImage(
@@ -75,7 +88,7 @@ fun EditorScreen(
                         .build(),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Fit
                 )
                 DraggableCanvas(
                     fields = uiState.fields,
@@ -91,7 +104,7 @@ fun EditorScreen(
 
             if (uiState.fields.isNotEmpty()) {
                 Text(
-                    "拖拽文字调整位置 · 点击文字展开编辑",
+                    stringResource(R.string.editor_preview_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
@@ -114,6 +127,26 @@ fun EditorScreen(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AspectRatioSelectorRow(
+    selected: AspectRatioOption,
+    onSelected: (AspectRatioOption) -> Unit,
+) {
+    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+        Text("画面比例", style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(8.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(AspectRatioOption.entries) { option ->
+                FilterChip(
+                    selected = selected == option,
+                    onClick = { onSelected(option) },
+                    label = { Text(option.label) }
+                )
             }
         }
     }

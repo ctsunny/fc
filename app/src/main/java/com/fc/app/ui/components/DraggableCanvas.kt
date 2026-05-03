@@ -45,6 +45,7 @@ fun DraggableCanvas(
 ) {
     val textMeasurer = rememberTextMeasurer()
     var draggingFieldId by remember { mutableStateOf<String?>(null) }
+    var draggingAnchor by remember { mutableStateOf<Offset?>(null) }
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     val measuredFields = remember(fields, canvasSize, textMeasurer) {
         measureFields(
@@ -68,34 +69,49 @@ fun DraggableCanvas(
                 .pointerInput(measuredFields, canvasSize) {
                     detectDragGestures(
                         onDragStart = { offset ->
-                            draggingFieldId = hitTest(measuredFields, offset)
+                            val hitId = hitTest(measuredFields, offset)
+                            draggingFieldId = hitId
+                            draggingAnchor = measuredFields.firstOrNull { it.field.id == hitId }?.let {
+                                Offset(it.anchorX, it.anchorY)
+                            }
+                            if (hitId != null) {
+                                onFieldSelected(hitId)
+                            }
                         },
                         onDrag = { change, delta ->
                             change.consume()
                             val fid = draggingFieldId ?: return@detectDragGestures
                             val measuredField = measuredFields.firstOrNull { it.field.id == fid } ?: return@detectDragGestures
+                            val currentAnchor = draggingAnchor ?: Offset(measuredField.anchorX, measuredField.anchorY)
                             val canvasWidth = canvasSize.width.toFloat()
                             val canvasHeight = canvasSize.height.toFloat()
                             if (canvasWidth <= 0f || canvasHeight <= 0f) return@detectDragGestures
 
                             val newAnchorX = clampOverlayAnchorX(
-                                desiredX = measuredField.anchorX + delta.x,
+                                desiredX = currentAnchor.x + delta.x,
                                 contentWidth = measuredField.layout.size.width.toFloat(),
                                 canvasWidth = canvasWidth,
                                 align = measuredField.field.textAlign
                             )
                             val newAnchorY = clampOverlayAnchorY(
-                                desiredY = measuredField.anchorY + delta.y,
+                                desiredY = currentAnchor.y + delta.y,
                                 contentHeight = measuredField.layout.size.height.toFloat(),
                                 canvasHeight = canvasHeight
                             )
 
+                            draggingAnchor = Offset(newAnchorX, newAnchorY)
                             val newX = newAnchorX / canvasWidth
                             val newY = newAnchorY / canvasHeight
                             onFieldMoved(fid, newX, newY)
                         },
-                        onDragEnd = { draggingFieldId = null },
-                        onDragCancel = { draggingFieldId = null }
+                        onDragEnd = {
+                            draggingFieldId = null
+                            draggingAnchor = null
+                        },
+                        onDragCancel = {
+                            draggingFieldId = null
+                            draggingAnchor = null
+                        }
                     )
                 }
         ) {

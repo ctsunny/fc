@@ -11,11 +11,13 @@ import android.graphics.Typeface
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.annotation.OptIn
+import androidx.media3.common.Effect
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.BitmapOverlay
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.OverlaySettings
+import androidx.media3.effect.Presentation
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.Effects
@@ -39,11 +41,6 @@ import kotlin.math.ceil
 @OptIn(UnstableApi::class)
 class VideoExporter(private val context: Context) {
 
-    private companion object {
-        const val DEFAULT_VIDEO_WIDTH = 1080
-        const val DEFAULT_VIDEO_HEIGHT = 1920
-    }
-
     /**
      * Applies [overlays] to [inputFile] and writes the result to [outputFile].
      * Must be called from a coroutine; switches to the main thread internally as required by
@@ -53,13 +50,15 @@ class VideoExporter(private val context: Context) {
         inputFile: File,
         outputFile: File,
         overlays: List<OverlayTextField>,
+        aspectRatioOption: AspectRatioOption,
     ) {
         val (videoWidth, videoHeight) = getVideoDimensions(inputFile)
-        val overlayBitmap = buildOverlayBitmap(overlays, videoWidth, videoHeight)
+        val sourceAspectRatio = if (videoHeight > 0) videoWidth.toFloat() / videoHeight.toFloat() else DEFAULT_VIDEO_ASPECT_RATIO
+        val outputAspectRatio = aspectRatioOption.resolve(sourceAspectRatio)
+        val outputFrameSize = calculateOutputFrameSize(videoWidth, videoHeight, outputAspectRatio)
+        val overlayBitmap = buildOverlayBitmap(overlays, outputFrameSize.width, outputFrameSize.height)
 
         withContext(Dispatchers.Main) {
-            // OverlaySettings: scale (2, 2) places the overlay across the full NDC frame
-            // (-1,-1)..(1,1) so it covers the video frame edge-to-edge.
             val overlaySettings = OverlaySettings.Builder()
                 .setScale(2f, 2f)
                 .build()
@@ -69,9 +68,13 @@ class VideoExporter(private val context: Context) {
                 overlaySettings,
             )
             val overlayEffect = OverlayEffect(ImmutableList.of(bitmapOverlay))
+            val videoEffects = mutableListOf<Effect>(
+                Presentation.createForAspectRatio(outputAspectRatio, 0),
+                overlayEffect,
+            )
             val effects = Effects(
                 /* audioProcessors= */ emptyList(),
-                /* videoEffects= */ listOf(overlayEffect),
+                /* videoEffects= */ videoEffects,
             )
 
             val editedMediaItem = EditedMediaItem.Builder(

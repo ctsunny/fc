@@ -11,6 +11,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.fc.app.util.VideoExporter
+import com.fc.app.util.AspectRatioOption
 import com.fc.app.data.PresetTemplates
 import com.fc.app.data.model.OverlayTextField
 import com.fc.app.data.model.StyleTemplate
@@ -31,6 +32,7 @@ data class EditorUiState(
     val fields: List<OverlayTextField> = emptyList(),
     val selectedFieldId: String? = null,
     val selectedTemplate: StyleTemplate? = null,
+    val aspectRatioOption: AspectRatioOption = AspectRatioOption.ORIGINAL,
     val isExporting: Boolean = false,
     val exportProgress: Float = 0f,
     val exportMessage: String = "",
@@ -68,6 +70,16 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
 
     fun selectField(fieldId: String?) {
         _uiState.update { it.copy(selectedFieldId = fieldId) }
+    }
+
+    fun updateAspectRatioOption(option: AspectRatioOption) {
+        _uiState.update {
+            it.copy(
+                aspectRatioOption = option,
+                exportMessage = "",
+                exportedFileUri = null
+            )
+        }
     }
 
     fun updateFieldText(fieldId: String, text: String) {
@@ -147,7 +159,12 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
 
                 _uiState.update { it.copy(exportProgress = 0.45f, exportMessage = "合成中，请稍候...") }
 
-                VideoExporter(ctx).export(inputFile, outputFile, state.fields)
+                VideoExporter(ctx).export(
+                    inputFile = inputFile,
+                    outputFile = outputFile,
+                    overlays = state.fields,
+                    aspectRatioOption = state.aspectRatioOption,
+                )
 
                 _uiState.update { it.copy(exportProgress = 0.85f, exportMessage = "正在保存到相册...") }
                 val savedUri = saveToMediaStore(ctx, outputFile)

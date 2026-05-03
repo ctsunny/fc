@@ -6,6 +6,8 @@ import android.net.Uri
 import android.util.Log
 
 const val DEFAULT_VIDEO_ASPECT_RATIO = 16f / 9f
+const val DEFAULT_VIDEO_WIDTH = 1080
+const val DEFAULT_VIDEO_HEIGHT = 1920
 
 data class VideoDimensions(
     val width: Int,

@@ -78,6 +78,7 @@ fun EditorScreen(
                 AsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(videoUri)
+                        .crossfade(true)
                         .decoderFactory { result, options, _ -> VideoFrameDecoder(result.source, options) }
                         .build(),
                     contentDescription = null,

@@ -57,7 +57,11 @@ fun StylePanel(
         // 字号
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("字号 ${field.fontSize.toInt()}", style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(56.dp))
-            IconButton(onClick = { onFontSizeChange(field.fontSize - 2f) }, modifier = Modifier.size(32.dp)) {
+            IconButton(
+                onClick = { onFontSizeChange(field.fontSize - 2f) },
+                enabled = field.fontSize > 10f,
+                modifier = Modifier.size(32.dp)
+            ) {
                 Icon(Icons.Default.TextDecrease, contentDescription = "减小")
             }
             Slider(
@@ -66,7 +70,11 @@ fun StylePanel(
                 valueRange = 10f..80f,
                 modifier = Modifier.weight(1f)
             )
-            IconButton(onClick = { onFontSizeChange(field.fontSize + 2f) }, modifier = Modifier.size(32.dp)) {
+            IconButton(
+                onClick = { onFontSizeChange(field.fontSize + 2f) },
+                enabled = field.fontSize < 80f,
+                modifier = Modifier.size(32.dp)
+            ) {
                 Icon(Icons.Default.TextIncrease, contentDescription = "增大")
             }
         }

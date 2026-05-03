@@ -54,24 +54,33 @@ fun DraggableCanvas(
             canvasSize = Size(canvasSize.width.toFloat(), canvasSize.height.toFloat())
         )
     }
+    // rememberUpdatedState lets gesture lambdas always read the latest measuredFields
+    // without recreating (and thus cancelling) the gesture handler on every field update.
+    val measuredFieldsState = rememberUpdatedState(measuredFields)
 
     Box(modifier = modifier) {
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
                 .onSizeChanged { canvasSize = it }
-                .pointerInput(measuredFields) {
+                // Key = Unit: tap handler never needs to restart; latest fields are read
+                // via measuredFieldsState.value at the time each tap fires.
+                .pointerInput(Unit) {
                     detectTapGestures { tap ->
-                        val hit = hitTest(measuredFields, tap)
+                        val hit = hitTest(measuredFieldsState.value, tap)
                         onFieldSelected(hit)
                     }
                 }
-                .pointerInput(measuredFields, canvasSize) {
+                // Key = canvasSize only: restart when the canvas is resized (e.g. rotation)
+                // but NOT on every field-position update, which previously cancelled the drag
+                // on every frame and made dragging completely non-functional.
+                .pointerInput(canvasSize) {
                     detectDragGestures(
                         onDragStart = { offset ->
-                            val hitId = hitTest(measuredFields, offset)
+                            val fields = measuredFieldsState.value
+                            val hitId = hitTest(fields, offset)
                             draggingFieldId = hitId
-                            draggingAnchor = measuredFields.firstOrNull { it.field.id == hitId }?.let {
+                            draggingAnchor = fields.firstOrNull { it.field.id == hitId }?.let {
                                 Offset(it.anchorX, it.anchorY)
                             }
                             if (hitId != null) {
@@ -81,7 +90,8 @@ fun DraggableCanvas(
                         onDrag = { change, delta ->
                             change.consume()
                             val fid = draggingFieldId ?: return@detectDragGestures
-                            val measuredField = measuredFields.firstOrNull { it.field.id == fid } ?: return@detectDragGestures
+                            val fields = measuredFieldsState.value
+                            val measuredField = fields.firstOrNull { it.field.id == fid } ?: return@detectDragGestures
                             val currentAnchor = draggingAnchor ?: Offset(measuredField.anchorX, measuredField.anchorY)
                             val canvasWidth = canvasSize.width.toFloat()
                             val canvasHeight = canvasSize.height.toFloat()

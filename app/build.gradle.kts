@@ -1,7 +1,3 @@
-import java.time.LocalDateTime
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -14,7 +10,7 @@ val autoBuildId = providers.environmentVariable("GITHUB_RUN_NUMBER").orNull
     ?.takeIf { it.isNotBlank() }
     ?: providers.environmentVariable("BUILD_NUMBER").orNull
         ?.takeIf { it.isNotBlank() }
-    ?: LocalDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyMMddHH"))
+    ?: (System.currentTimeMillis() / 60000L).toString()
 val autoVersionCode = autoBuildId.toIntOrNull()?.coerceAtLeast(1) ?: 1
 val autoVersionName = "$baseVersionName+$autoBuildId"
 

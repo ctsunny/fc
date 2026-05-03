@@ -140,7 +140,8 @@ class VideoExporter(private val context: Context) {
             if (!field.isVisible || field.text.isBlank()) continue
 
             val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG).apply {
-                // The editor preview currently renders text with Compose `fontSize.sp`.
+                // The editor preview currently renders text with Compose `fontSize.sp`
+                // in DraggableCanvas.textStyleFor().
                 // Export must therefore convert the stored logical font size with `scaledDensity`
                 // so StaticLayout uses the same sp-based sizing model; if preview sizing changes,
                 // this conversion should be updated together.

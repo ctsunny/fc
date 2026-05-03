@@ -74,8 +74,8 @@ fun DraggableCanvas(
                             change.consume()
                             val fid = draggingFieldId ?: return@detectDragGestures
                             val measuredField = measuredFields.firstOrNull { it.field.id == fid } ?: return@detectDragGestures
-                            val canvasWidth = size.width.toFloat()
-                            val canvasHeight = size.height.toFloat()
+                            val canvasWidth = canvasSize.width.toFloat()
+                            val canvasHeight = canvasSize.height.toFloat()
                             if (canvasWidth <= 0f || canvasHeight <= 0f) return@detectDragGestures
 
                             val newAnchorX = clampOverlayAnchorX(

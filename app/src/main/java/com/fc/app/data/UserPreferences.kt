@@ -56,7 +56,7 @@ class UserPreferences(context: Context) {
     }
 
     fun savePreset(name: String, fields: List<OverlayTextField>) {
-        val names = prefs.getStringSet(KEY_PRESET_NAMES, emptySet())?.toMutableSet() ?: mutableSetOf()
+        val names = getOrMutablePresetNames()
         names.add(name)
         prefs.edit()
             .putStringSet(KEY_PRESET_NAMES, names)
@@ -65,7 +65,7 @@ class UserPreferences(context: Context) {
     }
 
     fun deletePreset(name: String) {
-        val names = prefs.getStringSet(KEY_PRESET_NAMES, emptySet())?.toMutableSet() ?: mutableSetOf()
+        val names = getOrMutablePresetNames()
         names.remove(name)
         prefs.edit()
             .putStringSet(KEY_PRESET_NAMES, names)
@@ -74,6 +74,9 @@ class UserPreferences(context: Context) {
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    private fun getOrMutablePresetNames(): MutableSet<String> =
+        prefs.getStringSet(KEY_PRESET_NAMES, emptySet())?.toMutableSet() ?: mutableSetOf()
 
     private fun presetKey(name: String) = "preset_$name"
 

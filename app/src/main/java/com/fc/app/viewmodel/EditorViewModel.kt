@@ -128,7 +128,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun updateFadeDurationSecs(secs: Int) {
-        _uiState.update { it.copy(fadeDurationSecs = secs.coerceIn(0, 30)) }
+        _uiState.update { it.copy(fadeDurationSecs = secs.coerceIn(0, 10)) }
     }
 
     fun updateFieldText(fieldId: String, text: String) {

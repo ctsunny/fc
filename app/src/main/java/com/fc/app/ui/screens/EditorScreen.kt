@@ -23,7 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import coil.video.VideoFrameDecoder
+import coil.decode.VideoFrameDecoder
 import com.fc.app.data.model.OverlayTextField
 import com.fc.app.data.model.TemplateCategory
 import com.fc.app.ui.components.DraggableCanvas

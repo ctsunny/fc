@@ -277,9 +277,15 @@ private fun FruitFilterRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            FruitFilter.entries.forEachIndexed { index, filter ->
-                val enabled = if (index == 0) filter1Enabled else filter2Enabled
-                val onToggle = if (index == 0) onFilter1Toggle else onFilter2Toggle
+            FruitFilter.entries.forEach { filter ->
+                val enabled = when (filter) {
+                    FruitFilter.WARM_FRUIT -> filter1Enabled
+                    FruitFilter.FRESH_FRUIT -> filter2Enabled
+                }
+                val onToggle = when (filter) {
+                    FruitFilter.WARM_FRUIT -> onFilter1Toggle
+                    FruitFilter.FRESH_FRUIT -> onFilter2Toggle
+                }
                 Row(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,

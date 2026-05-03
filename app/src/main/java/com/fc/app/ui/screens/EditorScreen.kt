@@ -20,12 +20,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.decode.VideoFrameDecoder
 import com.fc.app.data.model.OverlayTextField
 import com.fc.app.data.model.TemplateCategory
+import com.fc.app.R
 import com.fc.app.ui.components.DraggableCanvas
 import com.fc.app.ui.components.StylePanel
 import com.fc.app.util.AspectRatioOption
@@ -102,7 +104,7 @@ fun EditorScreen(
 
             if (uiState.fields.isNotEmpty()) {
                 Text(
-                    "拖动文字调整位置 · 点击文字展开编辑 · 预览与导出共用当前比例",
+                    stringResource(R.string.editor_preview_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)

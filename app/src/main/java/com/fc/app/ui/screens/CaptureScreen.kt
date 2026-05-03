@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,7 +22,7 @@ import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CaptureScreen(onVideoSelected: (Uri) -> Unit) {
+fun CaptureScreen(onVideoSelected: (Uri) -> Unit, onSettingsClick: () -> Unit = {}) {
     val context = LocalContext.current
     var tempVideoFile by remember { mutableStateOf<File?>(null) }
     var tempVideoUri by remember { mutableStateOf<Uri?>(null) }
@@ -66,6 +67,11 @@ fun CaptureScreen(onVideoSelected: (Uri) -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text("FC 视频排版") },
+                actions = {
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(Icons.Default.Settings, contentDescription = "设置")
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }

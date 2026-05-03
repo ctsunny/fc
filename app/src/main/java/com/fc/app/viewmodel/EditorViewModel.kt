@@ -10,6 +10,8 @@ import android.provider.MediaStore
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.fc.app.data.UserPreferences
+import com.fc.app.data.UserPreset
 import com.fc.app.util.VideoExporter
 import com.fc.app.util.AspectRatioOption
 import com.fc.app.data.PresetTemplates
@@ -33,6 +35,7 @@ data class EditorUiState(
     val selectedFieldId: String? = null,
     val selectedTemplate: StyleTemplate? = null,
     val aspectRatioOption: AspectRatioOption = AspectRatioOption.ORIGINAL,
+    val fadeDurationSecs: Int = UserPreferences.DEFAULT_FADE_SECS,
     val isExporting: Boolean = false,
     val exportProgress: Float = 0f,
     val exportMessage: String = "",
@@ -44,17 +47,23 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         private const val TAG = "EditorViewModel"
     }
 
+    private val userPrefs = UserPreferences(application)
+
     private val _uiState = MutableStateFlow(EditorUiState())
     val uiState: StateFlow<EditorUiState> = _uiState.asStateFlow()
 
     fun setVideoUri(uri: Uri) {
+        val lastFields = userPrefs.loadLastFields()
+        val lastRatio = userPrefs.loadLastAspectRatio()
+        val lastFade = userPrefs.loadFadeDurationSecs()
         _uiState.update {
             it.copy(
                 videoUri = uri,
-                fields = PresetTemplates.promotionFields.map { field -> field.copy() },
+                fields = (lastFields ?: PresetTemplates.promotionFields).map { field -> field.copy() },
                 selectedFieldId = null,
                 selectedTemplate = null,
-                aspectRatioOption = AspectRatioOption.ORIGINAL,
+                aspectRatioOption = lastRatio,
+                fadeDurationSecs = lastFade,
                 isExporting = false,
                 exportProgress = 0f,
                 exportMessage = "",
@@ -81,6 +90,29 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         applyTemplate(template)
     }
 
+    fun applyUserPreset(preset: UserPreset) {
+        _uiState.update {
+            it.copy(
+                fields = preset.fields.map { field -> field.copy() },
+                selectedFieldId = null,
+                selectedTemplate = null,
+                exportProgress = 0f,
+                exportMessage = "",
+                exportedFileUri = null
+            )
+        }
+    }
+
+    fun loadUserPresets(): List<UserPreset> = userPrefs.loadPresets()
+
+    fun saveCurrentAsPreset(name: String) {
+        userPrefs.savePreset(name, _uiState.value.fields)
+    }
+
+    fun deleteUserPreset(name: String) {
+        userPrefs.deletePreset(name)
+    }
+
     fun selectField(fieldId: String?) {
         _uiState.update { it.copy(selectedFieldId = fieldId) }
     }
@@ -93,6 +125,10 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                 exportedFileUri = null
             )
         }
+    }
+
+    fun updateFadeDurationSecs(secs: Int) {
+        _uiState.update { it.copy(fadeDurationSecs = secs.coerceIn(0, 10)) }
     }
 
     fun updateFieldText(fieldId: String, text: String) {
@@ -178,12 +214,17 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                     outputFile = outputFile,
                     overlays = state.fields,
                     aspectRatioOption = state.aspectRatioOption,
+                    fadeDurationSecs = state.fadeDurationSecs,
                 )
 
                 _uiState.update { it.copy(exportProgress = 0.85f, exportMessage = "正在保存到相册...") }
                 val savedUri = saveToMediaStore(ctx, outputFile)
                 outputFile.delete()
                 outputFile = null
+
+                // Auto-save all current settings as defaults for next time
+                saveCurrentDefaults(state)
+
                 _uiState.update {
                     it.copy(
                         isExporting = false,
@@ -216,6 +257,12 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                 inputFile?.delete()
             }
         }
+    }
+
+    private fun saveCurrentDefaults(state: EditorUiState) {
+        userPrefs.saveLastFields(state.fields)
+        userPrefs.saveLastAspectRatio(state.aspectRatioOption)
+        userPrefs.saveFadeDurationSecs(state.fadeDurationSecs)
     }
 
     private fun copyUriToCache(ctx: Context, uri: Uri): File {
@@ -261,3 +308,4 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 }
+

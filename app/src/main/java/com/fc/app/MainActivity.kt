@@ -24,6 +24,7 @@ import androidx.navigation.compose.rememberNavController
 import com.fc.app.ui.screens.CaptureScreen
 import com.fc.app.ui.screens.EditorScreen
 import com.fc.app.ui.screens.ExportScreen
+import com.fc.app.ui.screens.SettingsScreen
 import com.fc.app.ui.theme.FcTheme
 import com.fc.app.viewmodel.EditorViewModel
 
@@ -43,10 +44,15 @@ fun FcApp() {
 
     NavHost(navController = navController, startDestination = "capture") {
         composable("capture") {
-            CaptureScreen { uri ->
-                vm.setVideoUri(uri)
-                navController.navigate("editor") { launchSingleTop = true }
-            }
+            CaptureScreen(
+                onVideoSelected = { uri ->
+                    vm.setVideoUri(uri)
+                    navController.navigate("editor") { launchSingleTop = true }
+                },
+                onSettingsClick = {
+                    navController.navigate("settings") { launchSingleTop = true }
+                }
+            )
         }
         composable("editor") {
             state.videoUri?.let { uri ->
@@ -83,6 +89,12 @@ fun FcApp() {
                 )
             }
         }
+        composable("settings") {
+            SettingsScreen(
+                viewModel = vm,
+                onBack = { navController.popBackStack() }
+            )
+        }
     }
 }
 
@@ -108,3 +120,4 @@ private fun EditorFallbackScreen(
         }
     }
 }
+

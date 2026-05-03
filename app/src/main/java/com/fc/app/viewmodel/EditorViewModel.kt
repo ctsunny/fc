@@ -167,7 +167,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                         isExporting = false,
                         exportProgress = 0f,
                         exportedFileUri = null,
-                        exportMessage = "导出失败：${e.localizedMessage ?: "请稍后重试"}"
+                        exportMessage = "导出失败：${e.message ?: "请稍后重试"}"
                     )
                 }
                 outputFile?.delete()
@@ -177,7 +177,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                         isExporting = false,
                         exportProgress = 0f,
                         exportedFileUri = null,
-                        exportMessage = "错误：${e.localizedMessage ?: "请稍后重试"}"
+                        exportMessage = "错误：${e.message ?: "请稍后重试"}"
                     )
                 }
                 outputFile?.delete()

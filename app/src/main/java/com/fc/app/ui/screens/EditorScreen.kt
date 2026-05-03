@@ -28,6 +28,7 @@ import com.fc.app.data.model.OverlayTextField
 import com.fc.app.data.model.TemplateCategory
 import com.fc.app.ui.components.DraggableCanvas
 import com.fc.app.ui.components.StylePanel
+import com.fc.app.util.DEFAULT_VIDEO_ASPECT_RATIO
 import com.fc.app.util.readVideoDimensions
 import com.fc.app.viewmodel.EditorViewModel
 
@@ -42,8 +43,8 @@ fun EditorScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     var expandedFieldId by remember { mutableStateOf<String?>(null) }
-    val previewAspectRatio by produceState(initialValue = 16f / 9f, key1 = videoUri) {
-        value = readVideoDimensions(context, videoUri)?.aspectRatio?.takeIf { it > 0f } ?: (16f / 9f)
+    val previewAspectRatio by produceState(initialValue = DEFAULT_VIDEO_ASPECT_RATIO, key1 = videoUri) {
+        value = readVideoDimensions(context, videoUri)?.aspectRatio?.takeIf { it > 0f } ?: DEFAULT_VIDEO_ASPECT_RATIO
     }
 
     Scaffold(

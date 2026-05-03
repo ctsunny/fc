@@ -5,12 +5,14 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Log
 
+const val DEFAULT_VIDEO_ASPECT_RATIO = 16f / 9f
+
 data class VideoDimensions(
     val width: Int,
     val height: Int,
 ) {
     val aspectRatio: Float
-        get() = if (height <= 0 || width <= 0) 16f / 9f else width.toFloat() / height.toFloat()
+        get() = if (height <= 0 || width <= 0) DEFAULT_VIDEO_ASPECT_RATIO else width.toFloat() / height.toFloat()
 }
 
 private const val TAG = "VideoMetadata"

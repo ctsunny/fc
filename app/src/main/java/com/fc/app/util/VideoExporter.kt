@@ -148,7 +148,7 @@ class VideoExporter(private val context: Context) {
 
             // StaticLayout needs a concrete width; use the widest explicit line so multiline
             // preview/export placement stays consistent without stretching shorter lines.
-            val lines = field.text.replace("\r\n", "\n").split('\n')
+            val lines = field.text.lines()
             val layoutWidth = lines
                 .maxOfOrNull { line -> ceil(paint.measureText(line.ifEmpty { " " }).toDouble()).toInt() }
                 ?.coerceAtLeast(1)

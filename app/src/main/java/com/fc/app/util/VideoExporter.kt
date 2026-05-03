@@ -140,9 +140,10 @@ class VideoExporter(private val context: Context) {
             if (!field.isVisible || field.text.isBlank()) continue
 
             val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG).apply {
-                // Compose preview uses `fontSize.sp`, which becomes scaled pixels at render time.
-                // `scaledDensity` matches sp text sizing, while plain `density` would match dp sizing.
-                // Convert here so exported text matches the on-screen preview more closely.
+                // The editor preview currently renders text with Compose `fontSize.sp`.
+                // Export must therefore convert the stored logical font size with `scaledDensity`
+                // so StaticLayout uses the same sp-based sizing model; if preview sizing changes,
+                // this conversion should be updated together.
                 textSize = field.fontSize * context.resources.displayMetrics.scaledDensity
                 typeface = if (field.isBold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
                 color = parseColorOrDefault(field.colorHex, Color.WHITE)

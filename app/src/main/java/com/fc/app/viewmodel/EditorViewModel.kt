@@ -48,7 +48,19 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     val uiState: StateFlow<EditorUiState> = _uiState.asStateFlow()
 
     fun setVideoUri(uri: Uri) {
-        _uiState.value = EditorUiState(videoUri = uri)
+        _uiState.update {
+            it.copy(
+                videoUri = uri,
+                fields = emptyList(),
+                selectedFieldId = null,
+                selectedTemplate = null,
+                aspectRatioOption = AspectRatioOption.ORIGINAL,
+                isExporting = false,
+                exportProgress = 0f,
+                exportMessage = "",
+                exportedFileUri = null,
+            )
+        }
     }
 
     fun applyTemplate(template: StyleTemplate) {

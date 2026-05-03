@@ -12,6 +12,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
 
     steps:
       - name: 检出代码
@@ -33,9 +35,7 @@ jobs:
       # 使 debug 与 release 两种构建使用同一签名密钥，避免覆盖安装时签名冲突。
       # 若未配置 Secrets，则跳过此步骤，使用 Android 默认 debug 签名。
       - name: 配置签名密钥库（如已设置 Secrets）
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        if: ${{ env.KEYSTORE_BASE64 != '' }}
         run: |
           echo "$KEYSTORE_BASE64" | base64 --decode > app-release.jks
           cat > keystore.properties <<EOF

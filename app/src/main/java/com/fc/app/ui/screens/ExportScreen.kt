@@ -1,9 +1,11 @@
 package com.fc.app.ui.screens
 
 import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -71,6 +73,22 @@ fun ExportScreen(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
                         modifier = Modifier.padding(top = 8.dp, bottom = 32.dp)
                     )
+                    // Play button — opens the exported video with the system video player
+                    Button(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(uiState.exportedFileUri, "video/mp4")
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.fillMaxWidth().height(56.dp)
+                    ) {
+                        Icon(Icons.Default.PlayArrow, null)
+                        Spacer(Modifier.width(10.dp))
+                        Text("立即播放", style = MaterialTheme.typography.titleMedium)
+                    }
+                    Spacer(Modifier.height(12.dp))
                     Button(
                         onClick = {
                             val intent = Intent(Intent.ACTION_SEND).apply {
@@ -80,7 +98,11 @@ fun ExportScreen(
                             }
                             context.startActivity(Intent.createChooser(intent, "分享视频"))
                         },
-                        modifier = Modifier.fillMaxWidth().height(56.dp)
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
                     ) {
                         Icon(Icons.Default.Share, null)
                         Spacer(Modifier.width(10.dp))

@@ -111,6 +111,15 @@ fun CaptureScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            // Company branding header
+            Text(
+                "湖北果旺角水果仓储",
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.height(4.dp))
+
             Text("开始创作", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
             Text(
                 "选择或拍摄视频，套用预设模板后导出",

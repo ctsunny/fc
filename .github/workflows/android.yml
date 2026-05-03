@@ -27,6 +27,24 @@ jobs:
       - name: 赋予 gradlew 执行权限
         run: chmod +x gradlew
 
+      # ── 签名配置（可选）──────────────────────────────────────────────────────
+      # 若仓库 Secrets 中已配置 KEYSTORE_BASE64 / KEYSTORE_PASSWORD /
+      # KEY_ALIAS / KEY_PASSWORD，则解码密钥库文件并写入 keystore.properties，
+      # 使 debug 与 release 两种构建使用同一签名密钥，避免覆盖安装时签名冲突。
+      # 若未配置 Secrets，则跳过此步骤，使用 Android 默认 debug 签名。
+      - name: 配置签名密钥库（如已设置 Secrets）
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > app-release.jks
+          cat > keystore.properties <<EOF
+          KEYSTORE_PATH=../app-release.jks
+          KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS=${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}
+          EOF
+
       - name: 构建 Debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
@@ -37,12 +55,12 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      - name: 构建 Release APK（未签名）
+      - name: 构建 Release APK
         run: ./gradlew assembleRelease --no-daemon
 
-      - name: 上传 Release APK（未签名）
+      - name: 上传 Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: release-apk-unsigned
-          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          name: release-apk
+          path: app/build/outputs/apk/release/app-release*.apk
           retention-days: 30

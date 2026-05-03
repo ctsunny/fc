@@ -184,7 +184,7 @@ private fun FadeDurationRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            if (fadeSecs == 0) "文字淡出：关闭" else "文字淡出：${fadeSecs}秒",
+            if (fadeSecs == 0) "文字消失：关闭" else "文字消失：${fadeSecs}秒内",
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.width(110.dp)
         )

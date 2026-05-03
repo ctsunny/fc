@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.fc.app.data.model.FontFamilyOption
 import com.fc.app.data.model.OverlayTextField
+import com.fc.app.util.toComposeFontFamily
 
 /** 8 个预设颜色供快速选取 */
 val presetColors = listOf(
@@ -98,14 +99,27 @@ fun StylePanel(
         }
         Spacer(Modifier.height(6.dp))
 
-        // 字体
+        // 字体 — each chip renders its label in the actual font family for visual preview
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("字体", style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(32.dp))
-            FontFamilyOption.entries.forEach { option ->
+        }
+        androidx.compose.foundation.lazy.LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(FontFamilyOption.entries.size) { index ->
+                val option = FontFamilyOption.entries[index]
                 FilterChip(
                     selected = field.fontFamily == option,
                     onClick = { onFontFamilyChange(option) },
-                    label = { Text(option.label, style = MaterialTheme.typography.labelSmall) }
+                    label = {
+                        Text(
+                            option.label,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = option.toComposeFontFamily()
+                            )
+                        )
+                    }
                 )
             }
         }

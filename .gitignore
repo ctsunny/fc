@@ -1,3 +1,8 @@
 .gradle/
 local.properties
 **/build/
+
+# Signing keystores and local signing config — never commit these
+*.jks
+*.keystore
+keystore.properties

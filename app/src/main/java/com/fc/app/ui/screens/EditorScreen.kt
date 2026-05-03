@@ -48,6 +48,7 @@ fun EditorScreen(
     onBackClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val userPresets by viewModel.userPresetsFlow.collectAsState()
     val context = LocalContext.current
     var expandedFieldId by remember { mutableStateOf<String?>(null) }
 
@@ -72,7 +73,7 @@ fun EditorScreen(
 
             // Preset selector: load built-in templates or user presets; save current as preset
             PresetSelectorRow(
-                userPresets = remember(uiState) { viewModel.loadUserPresets() },
+                userPresets = userPresets,
                 builtInTemplates = PresetTemplates.all,
                 onApplyUserPreset = { viewModel.applyUserPreset(it) },
                 onApplyTemplate = { viewModel.applyTemplate(it) },

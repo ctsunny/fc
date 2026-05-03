@@ -119,14 +119,27 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private val _userPresets = MutableStateFlow<List<UserPreset>>(emptyList())
+    val userPresetsFlow: StateFlow<List<UserPreset>> = _userPresets.asStateFlow()
+
+    init {
+        refreshUserPresets()
+    }
+
+    private fun refreshUserPresets() {
+        _userPresets.value = userPrefs.loadPresets()
+    }
+
     fun loadUserPresets(): List<UserPreset> = userPrefs.loadPresets()
 
     fun saveCurrentAsPreset(name: String) {
         userPrefs.savePreset(name, _uiState.value.fields)
+        refreshUserPresets()
     }
 
     fun deleteUserPreset(name: String) {
         userPrefs.deletePreset(name)
+        refreshUserPresets()
     }
 
     fun updatePreviewCanvasSize(width: Int, height: Int) {
@@ -336,6 +349,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         val state = _presetEditState.value
         if (state.presetName.isNotEmpty()) {
             userPrefs.savePreset(state.presetName, state.fields)
+            refreshUserPresets()
         }
         _presetEditState.value = PresetEditUiState()
     }

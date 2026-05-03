@@ -29,8 +29,9 @@ import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Locale
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 private const val TAG = "CameraScreen"
 
@@ -98,7 +99,14 @@ fun CameraScreen(
     val previewView = remember { PreviewView(context) }
     LaunchedEffect(lensFacing, hasPermissions) {
         if (!hasPermissions) return@LaunchedEffect
-        val provider = ProcessCameraProvider.getInstance(context).get()
+        val provider = suspendCancellableCoroutine<ProcessCameraProvider> { cont ->
+            val future = ProcessCameraProvider.getInstance(context)
+            future.addListener({
+                try { cont.resume(future.get()) }
+                catch (e: Exception) { cont.resumeWithException(e) }
+            }, ContextCompat.getMainExecutor(context))
+            cont.invokeOnCancellation { future.cancel(true) }
+        }
         cameraProvider = provider
 
         val preview = Preview.Builder().build().also {
@@ -257,8 +265,7 @@ private fun startRecording(
     videoCapture: VideoCapture<Recorder>,
     onFinished: (Uri?) -> Unit,
 ): Recording {
-    val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(System.currentTimeMillis())
-    val outputFile = File(context.cacheDir, "capture_$timestamp.mp4")
+    val outputFile = File(context.cacheDir, "capture_${System.currentTimeMillis()}.mp4")
     val outputOptions = FileOutputOptions.Builder(outputFile).build()
 
     return videoCapture.output

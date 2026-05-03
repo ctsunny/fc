@@ -36,6 +36,11 @@ import kotlin.coroutines.resumeWithException
 @OptIn(UnstableApi::class)
 class VideoExporter(private val context: Context) {
 
+    private companion object {
+        const val DEFAULT_VIDEO_WIDTH = 1080
+        const val DEFAULT_VIDEO_HEIGHT = 1920
+    }
+
     /**
      * Applies [overlays] to [inputFile] and writes the result to [outputFile].
      * Must be called from a coroutine; switches to the main thread internally as required by
@@ -105,9 +110,9 @@ class VideoExporter(private val context: Context) {
         return try {
             retriever.setDataSource(file.absolutePath)
             val w = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
-                ?.toIntOrNull() ?: 1080
+                ?.toIntOrNull() ?: DEFAULT_VIDEO_WIDTH
             val h = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
-                ?.toIntOrNull() ?: 1920
+                ?.toIntOrNull() ?: DEFAULT_VIDEO_HEIGHT
             Pair(w, h)
         } finally {
             retriever.release()

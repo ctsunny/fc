@@ -14,6 +14,9 @@ import com.fc.app.data.PresetTemplates
 import com.fc.app.data.model.OverlayTextField
 import com.fc.app.data.model.StyleTemplate
 import com.fc.app.data.model.TemplateCategory
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.transformer.ExportException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -89,6 +92,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         _uiState.update { it.copy(fields = emptyList(), selectedFieldId = null, exportedFileUri = null, exportMessage = "") }
     }
 
+    @OptIn(UnstableApi::class)
     fun exportVideo() {
         val state = _uiState.value
         val videoUri = state.videoUri ?: return
@@ -112,6 +116,8 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                     it.copy(isExporting = false, exportProgress = 1f,
                         exportMessage = "导出成功！", exportedFileUri = savedUri)
                 }
+            } catch (e: ExportException) {
+                _uiState.update { it.copy(isExporting = false, exportMessage = "导出失败：${e.message}") }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isExporting = false, exportMessage = "错误：${e.message}") }
             } finally {

@@ -3,10 +3,70 @@ package com.fc.app.data
 import com.fc.app.data.model.*
 
 /**
- * 三类内置预设模板：电商爆款 / 实体门店 / 活动促销
+ * 内置预设：
+ *  - promotionFields  导入视频后自动加载的 6 个文字字段
+ *  - 三类历史模板（保留备用）
  * 所有坐标均为画布百分比 (xFraction, yFraction)
  */
 object PresetTemplates {
+
+    /** 导入视频后自动加载的 6 类文字预设 */
+    val promotionFields: List<OverlayTextField> = listOf(
+        OverlayTextField(
+            id = "product_name",
+            label = "产品名",
+            text = "产品名",
+            xFraction = 0.05f, yFraction = 0.06f,
+            fontSize = 36f, colorHex = "#FFFFFF",
+            isBold = true, hasShadow = true,
+            textAlign = TextAlignOption.LEFT
+        ),
+        OverlayTextField(
+            id = "original_price",
+            label = "原价",
+            text = "原价",
+            xFraction = 0.05f, yFraction = 0.20f,
+            fontSize = 24f, colorHex = "#CCCCCC",
+            isBold = false, hasShadow = true,
+            textAlign = TextAlignOption.LEFT
+        ),
+        OverlayTextField(
+            id = "activity_price",
+            label = "活动价",
+            text = "活动价",
+            xFraction = 0.05f, yFraction = 0.30f,
+            fontSize = 32f, colorHex = "#FF3333",
+            isBold = true, hasShadow = true,
+            textAlign = TextAlignOption.LEFT
+        ),
+        OverlayTextField(
+            id = "remark1",
+            label = "备注1",
+            text = "备注1",
+            xFraction = 0.05f, yFraction = 0.74f,
+            fontSize = 20f, colorHex = "#FFFFFF",
+            isBold = false, hasShadow = true,
+            textAlign = TextAlignOption.LEFT
+        ),
+        OverlayTextField(
+            id = "remark2",
+            label = "备注2",
+            text = "备注2",
+            xFraction = 0.05f, yFraction = 0.83f,
+            fontSize = 20f, colorHex = "#FFFFFF",
+            isBold = false, hasShadow = true,
+            textAlign = TextAlignOption.LEFT
+        ),
+        OverlayTextField(
+            id = "date",
+            label = "日期",
+            text = "日期",
+            xFraction = 0.05f, yFraction = 0.92f,
+            fontSize = 18f, colorHex = "#DDDDDD",
+            isBold = false, hasShadow = true,
+            textAlign = TextAlignOption.LEFT
+        )
+    )
 
     // ─────────── 电商爆款 ───────────
     val ecommerceTemplate = StyleTemplate(

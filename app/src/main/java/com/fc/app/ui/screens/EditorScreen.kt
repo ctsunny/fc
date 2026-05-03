@@ -26,7 +26,6 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.decode.VideoFrameDecoder
 import com.fc.app.data.model.OverlayTextField
-import com.fc.app.data.model.TemplateCategory
 import com.fc.app.R
 import com.fc.app.ui.components.DraggableCanvas
 import com.fc.app.ui.components.StylePanel
@@ -58,11 +57,6 @@ fun EditorScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-
-            // 模板选择（字段为空时展示）
-            if (uiState.fields.isEmpty()) {
-                TemplateSelectorRow { cat -> viewModel.applyPresetByCategory(cat) }
-            }
 
             AspectRatioSelectorRow(
                 selected = uiState.aspectRatioOption,
@@ -97,20 +91,19 @@ fun EditorScreen(
                 )
             }
 
-            if (uiState.fields.isNotEmpty()) {
-                Text(
-                    stringResource(R.string.editor_preview_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                )
-                LazyColumn(modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .heightIn(min = 200.dp)
-                ) {
-                    items(uiState.fields, key = { it.id }) { field ->
-                        FieldRow(
+            Text(
+                stringResource(R.string.editor_preview_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+            LazyColumn(modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .heightIn(min = 200.dp)
+            ) {
+                items(uiState.fields, key = { it.id }) { field ->
+                    FieldRow(
                             field = field,
                             isExpanded = expandedFieldId == field.id,
                             onToggle = {
@@ -126,7 +119,6 @@ fun EditorScreen(
                         )
                     }
                 }
-            }
         }
     }
 }
@@ -146,30 +138,6 @@ private fun AspectRatioSelectorRow(
                     onClick = { onSelected(option) },
                     label = { Text(option.label) }
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun TemplateSelectorRow(onSelect: (TemplateCategory) -> Unit) {
-    val options = listOf(
-        Triple(TemplateCategory.ECOMMERCE, "🛒 电商爆款", Color(0xFFFF4444)),
-        Triple(TemplateCategory.STORE,     "🏪 实体门店", Color(0xFF2288FF)),
-        Triple(TemplateCategory.ACTIVITY,  "🎉 活动促销", Color(0xFFFF6600))
-    )
-    Column(modifier = Modifier.padding(12.dp)) {
-        Text("选择预设模板", style = MaterialTheme.typography.titleSmall)
-        Spacer(Modifier.height(8.dp))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(options) { (cat, name, color) ->
-                Card(
-                    onClick = { onSelect(cat) },
-                    colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.18f))
-                ) {
-                    Text(name, modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-                        style = MaterialTheme.typography.bodyLarge)
-                }
             }
         }
     }

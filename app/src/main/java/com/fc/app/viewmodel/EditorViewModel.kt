@@ -51,7 +51,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         _uiState.update {
             it.copy(
                 videoUri = uri,
-                fields = emptyList(),
+                fields = PresetTemplates.promotionFields.map { field -> field.copy() },
                 selectedFieldId = null,
                 selectedTemplate = null,
                 aspectRatioOption = AspectRatioOption.ORIGINAL,

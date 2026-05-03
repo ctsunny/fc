@@ -3,6 +3,7 @@ package com.fc.app.data
 import android.content.Context
 import com.fc.app.data.model.OverlayTextField
 import com.fc.app.util.AspectRatioOption
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -73,6 +74,37 @@ class UserPreferences(context: Context) {
             .apply()
     }
 
+    // ─── Preferred capture aspect ratio ──────────────────────────────────────
+
+    fun savePreferredCaptureRatio(option: AspectRatioOption) {
+        prefs.edit().putString(KEY_CAPTURE_RATIO, option.name).apply()
+    }
+
+    fun loadPreferredCaptureRatio(): AspectRatioOption =
+        prefs.getString(KEY_CAPTURE_RATIO, null)
+            ?.let { runCatching { AspectRatioOption.valueOf(it) }.getOrNull() }
+            ?: AspectRatioOption.PORTRAIT_9_16
+
+    // ─── Draft project ────────────────────────────────────────────────────────
+
+    fun saveDraft(videoUriString: String, fields: List<OverlayTextField>, aspectRatio: AspectRatioOption, fadeSecs: Int) {
+        val draft = DraftProject(videoUriString, fields, aspectRatio.name, fadeSecs)
+        prefs.edit()
+            .putString(KEY_DRAFT, Json.encodeToString(draft))
+            .apply()
+    }
+
+    fun loadDraft(): DraftProject? =
+        prefs.getString(KEY_DRAFT, null)?.let { json ->
+            runCatching { Json.decodeFromString<DraftProject>(json) }.getOrNull()
+        }
+
+    fun hasDraft(): Boolean = prefs.contains(KEY_DRAFT)
+
+    fun clearDraft() {
+        prefs.edit().remove(KEY_DRAFT).apply()
+    }
+
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
     private fun getOrMutablePresetNames(): MutableSet<String> =
@@ -85,8 +117,21 @@ class UserPreferences(context: Context) {
         private const val KEY_LAST_RATIO = "last_ratio"
         private const val KEY_FADE_DURATION = "fade_duration"
         private const val KEY_PRESET_NAMES = "preset_names"
+        private const val KEY_CAPTURE_RATIO = "capture_ratio"
+        private const val KEY_DRAFT = "draft_project"
         const val DEFAULT_FADE_SECS = 3
     }
 }
 
 data class UserPreset(val name: String, val fields: List<OverlayTextField>)
+
+@Serializable
+data class DraftProject(
+    val videoUriString: String,
+    val fields: List<OverlayTextField>,
+    val aspectRatioName: String,
+    val fadeSecs: Int,
+) {
+    fun aspectRatioOption(): AspectRatioOption =
+        runCatching { AspectRatioOption.valueOf(aspectRatioName) }.getOrDefault(AspectRatioOption.ORIGINAL)
+}

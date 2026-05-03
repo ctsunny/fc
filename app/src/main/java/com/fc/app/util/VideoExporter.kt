@@ -57,6 +57,7 @@ class VideoExporter(private val context: Context) {
         overlays: List<OverlayTextField>,
         aspectRatioOption: AspectRatioOption,
         fadeDurationSecs: Int = 0,
+        previewCanvasWidth: Int = 0,
     ) {
         val (videoWidth, videoHeight) = getVideoDimensions(inputFile)
         val videoDurationUs = getVideoDurationUs(inputFile)
@@ -67,7 +68,7 @@ class VideoExporter(private val context: Context) {
         }
         val outputAspectRatio = aspectRatioOption.resolve(sourceAspectRatio)
         val outputFrameSize = calculateOutputFrameSize(videoWidth, videoHeight, outputAspectRatio)
-        val overlayBitmap = buildOverlayBitmap(overlays, outputFrameSize.width, outputFrameSize.height)
+        val overlayBitmap = buildOverlayBitmap(overlays, outputFrameSize.width, outputFrameSize.height, previewCanvasWidth)
 
         withContext(Dispatchers.Main) {
             val fadeDurationUs = fadeDurationSecs.toLong() * 1_000_000L
@@ -164,18 +165,21 @@ class VideoExporter(private val context: Context) {
         overlays: List<OverlayTextField>,
         width: Int,
         height: Int,
+        previewCanvasWidth: Int = 0,
     ): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
         // Scale factor: convert sp-based font sizes to bitmap pixels.
-        // The editor preview canvas fills the screen width in device pixels
-        // (screenWidthPx). The export bitmap has its own resolution (width).
-        // We keep the same visual proportion: fontSize * scaledDensity gives
-        // the size in screen pixels; multiply by (width / screenWidthPx) to
-        // map that to bitmap pixels.
-        val screenWidthPx = context.resources.displayMetrics.widthPixels.toFloat()
-        val fontScale = context.resources.displayMetrics.scaledDensity * (width.toFloat() / screenWidthPx)
+        // If the preview canvas width is known (reported from DraggableCanvas),
+        // use it so the exported text is proportionally the same size as seen
+        // in the editor preview.  Fall back to screen width when not available.
+        val referenceWidthPx = if (previewCanvasWidth > 0) {
+            previewCanvasWidth.toFloat()
+        } else {
+            context.resources.displayMetrics.widthPixels.toFloat()
+        }
+        val fontScale = context.resources.displayMetrics.scaledDensity * (width.toFloat() / referenceWidthPx)
 
         for (field in overlays) {
             if (!field.isVisible || field.text.isBlank()) continue

@@ -123,20 +123,21 @@ fun EditorScreen(
             ) {
                 items(uiState.fields, key = { it.id }) { field ->
                     FieldRow(
-                            field = field,
-                            isExpanded = expandedFieldId == field.id,
-                            onToggle = {
-                                val next = if (expandedFieldId == field.id) null else field.id
-                                expandedFieldId = next
-                                viewModel.selectField(next)
-                            },
-                            onVisibility = { viewModel.updateFieldVisibility(field.id, !field.isVisible) },
-                            onText = { viewModel.updateFieldText(field.id, it) },
-                            onSize = { viewModel.updateFieldFontSize(field.id, it) },
-                            onColor = { viewModel.updateFieldColor(field.id, it) },
-                            onBold = { viewModel.updateFieldBold(field.id, it) }
-                        )
-                    }
+                        field = field,
+                        isExpanded = expandedFieldId == field.id,
+                        onToggle = {
+                            val next = if (expandedFieldId == field.id) null else field.id
+                            expandedFieldId = next
+                            viewModel.selectField(next)
+                        },
+                        onVisibility = { viewModel.updateFieldVisibility(field.id, !field.isVisible) },
+                        onText = { viewModel.updateFieldText(field.id, it) },
+                        onSize = { viewModel.updateFieldFontSize(field.id, it) },
+                        onColor = { viewModel.updateFieldColor(field.id, it) },
+                        onBold = { viewModel.updateFieldBold(field.id, it) },
+                        onFontFamily = { viewModel.updateFieldFontFamily(field.id, it) }
+                    )
+                }
                 }
         }
     }
@@ -197,7 +198,8 @@ private fun FieldRow(
     onText: (String) -> Unit,
     onSize: (Float) -> Unit,
     onColor: (String) -> Unit,
-    onBold: (Boolean) -> Unit
+    onBold: (Boolean) -> Unit,
+    onFontFamily: (com.fc.app.data.model.FontFamilyOption) -> Unit = {},
 ) {
     Column {
         Row(
@@ -236,6 +238,7 @@ private fun FieldRow(
                 onFontSizeChange = onSize,
                 onColorChange = onColor,
                 onBoldChange = onBold,
+                onFontFamilyChange = onFontFamily,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
             )
         }

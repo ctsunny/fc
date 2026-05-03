@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.fc.app.data.model.FontFamilyOption
 import com.fc.app.data.model.OverlayTextField
 
 /** 8 个预设颜色供快速选取 */
@@ -30,6 +31,7 @@ fun StylePanel(
     onFontSizeChange: (Float) -> Unit,
     onColorChange: (String) -> Unit,
     onBoldChange: (Boolean) -> Unit,
+    onFontFamilyChange: (FontFamilyOption) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -91,6 +93,19 @@ fun StylePanel(
                         .clip(CircleShape)
                         .background(runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(Color.White))
                         .clickable { onColorChange(hex) }
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+
+        // 字体
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("字体", style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(32.dp))
+            FontFamilyOption.entries.forEach { option ->
+                FilterChip(
+                    selected = field.fontFamily == option,
+                    onClick = { onFontFamilyChange(option) },
+                    label = { Text(option.label, style = MaterialTheme.typography.labelSmall) }
                 )
             }
         }

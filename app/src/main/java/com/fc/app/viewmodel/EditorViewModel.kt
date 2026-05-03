@@ -148,6 +148,21 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         refreshUserPresets()
     }
 
+    /** Returns all user presets and settings serialised as a JSON string. */
+    fun exportConfigJson(): String = userPrefs.exportAllConfig()
+
+    /**
+     * Imports user presets and settings from a JSON string previously produced
+     * by [exportConfigJson].  The in-memory preset list is refreshed on success.
+     *
+     * @return `true` if the JSON was valid and data was written, `false` otherwise.
+     */
+    fun importConfigJson(json: String): Boolean {
+        val ok = userPrefs.importAllConfig(json)
+        if (ok) refreshUserPresets()
+        return ok
+    }
+
     fun updatePreviewCanvasSize(width: Int, height: Int) {
         if (width > 0) {
             _uiState.update { it.copy(previewCanvasWidth = width) }

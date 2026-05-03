@@ -1,5 +1,8 @@
 package com.fc.app.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.fc.app.data.UserPreset
 import com.fc.app.viewmodel.EditorViewModel
@@ -21,10 +25,40 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onEditPreset: () -> Unit = {},
 ) {
+    val context = LocalContext.current
     val presets by viewModel.userPresetsFlow.collectAsState()
     var showSaveDialog by remember { mutableStateOf(false) }
     var presetNameInput by remember { mutableStateOf("") }
     var deleteCandidate by remember { mutableStateOf<UserPreset?>(null) }
+    var importResultMsg by remember { mutableStateOf<String?>(null) }
+
+    // Export: let the user choose where to save the .json file
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val json = viewModel.exportConfigJson()
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) }
+            }
+        }
+    }
+
+    // Import: let the user pick a previously exported .json file
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val json = runCatching {
+                context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText()
+            }.getOrNull()
+            importResultMsg = if (json != null && viewModel.importConfigJson(json)) {
+                "导入成功"
+            } else {
+                "导入失败：文件无效"
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -50,6 +84,23 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            // Export / Import config row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { exportLauncher.launch("fc_config.json") },
+                    modifier = Modifier.weight(1f)
+                ) { Text("导出配置") }
+                OutlinedButton(
+                    onClick = { importLauncher.launch(arrayOf("application/json", "*/*")) },
+                    modifier = Modifier.weight(1f)
+                ) { Text("导入配置") }
+            }
+            HorizontalDivider()
             if (presets.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -135,6 +186,18 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { deleteCandidate = null }) { Text("取消") }
+            }
+        )
+    }
+
+    // Import result feedback
+    importResultMsg?.let { msg ->
+        AlertDialog(
+            onDismissRequest = { importResultMsg = null },
+            title = { Text("导入配置") },
+            text = { Text(msg) },
+            confirmButton = {
+                TextButton(onClick = { importResultMsg = null }) { Text("确定") }
             }
         )
     }

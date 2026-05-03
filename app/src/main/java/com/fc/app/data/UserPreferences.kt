@@ -7,6 +7,20 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+@Serializable
+data class ExportedPreset(val name: String, val fields: List<OverlayTextField>)
+
+@Serializable
+data class ExportedConfig(
+    val presets: List<ExportedPreset> = emptyList(),
+    val lastFields: List<OverlayTextField>? = null,
+    val lastAspectRatio: String? = null,
+    val fadeDurationSecs: Int = UserPreferences.DEFAULT_FADE_SECS,
+    val fruitFilter1Enabled: Boolean = false,
+    val fruitFilter2Enabled: Boolean = false,
+    val captureAspectRatio: String? = null,
+)
+
 /**
  * Thin SharedPreferences wrapper for persisting user defaults and named presets.
  */
@@ -119,6 +133,52 @@ class UserPreferences(context: Context) {
 
     fun clearDraft() {
         prefs.edit().remove(KEY_DRAFT).apply()
+    }
+
+    // ─── Config export / import ───────────────────────────────────────────────
+
+    /** Serialises all user preferences and named presets to a JSON string. */
+    fun exportAllConfig(): String {
+        val config = ExportedConfig(
+            presets = loadPresets().map { ExportedPreset(it.name, it.fields) },
+            lastFields = loadLastFields(),
+            lastAspectRatio = prefs.getString(KEY_LAST_RATIO, null),
+            fadeDurationSecs = loadFadeDurationSecs(),
+            fruitFilter1Enabled = loadFruitFilter1Enabled(),
+            fruitFilter2Enabled = loadFruitFilter2Enabled(),
+            captureAspectRatio = prefs.getString(KEY_CAPTURE_RATIO, null),
+        )
+        return Json.encodeToString(config)
+    }
+
+    /**
+     * Parses a JSON string produced by [exportAllConfig] and writes the
+     * contained data into SharedPreferences.  Existing entries are replaced;
+     * entries absent from the config are left unchanged.
+     *
+     * @return `true` on success, `false` if the JSON is invalid.
+     */
+    fun importAllConfig(json: String): Boolean {
+        val config = runCatching { Json.decodeFromString<ExportedConfig>(json) }.getOrNull()
+            ?: return false
+        prefs.edit().also { editor ->
+            // Presets – replace name-set and individual entries
+            val names = config.presets.map { it.name }.toMutableSet()
+            editor.putStringSet(KEY_PRESET_NAMES, names)
+            config.presets.forEach { preset ->
+                editor.putString(presetKey(preset.name), Json.encodeToString(preset.fields))
+            }
+            // Last-used settings
+            config.lastFields?.let {
+                editor.putString(KEY_LAST_FIELDS, Json.encodeToString(it))
+            }
+            config.lastAspectRatio?.let { editor.putString(KEY_LAST_RATIO, it) }
+            editor.putInt(KEY_FADE_DURATION, config.fadeDurationSecs)
+            editor.putBoolean(KEY_FRUIT_FILTER_1, config.fruitFilter1Enabled)
+            editor.putBoolean(KEY_FRUIT_FILTER_2, config.fruitFilter2Enabled)
+            config.captureAspectRatio?.let { editor.putString(KEY_CAPTURE_RATIO, it) }
+        }.apply()
+        return true
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────

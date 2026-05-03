@@ -88,13 +88,13 @@ fun EditorScreen(
                 onSavePreset = { name -> viewModel.saveCurrentAsPreset(name) },
             )
 
-            // Preview area – outer black container takes all available weight space;
+            // Preview area – outer black container takes more weight;
             // inner box is constrained to the selected aspect ratio so the canvas
             // accurately shows what the exported video will look like.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
+                    .weight(1.5f)
                     .background(Color.Black),
                 contentAlignment = Alignment.Center
             ) {
@@ -129,40 +129,47 @@ fun EditorScreen(
                 }
             }
 
-            Text(
-                stringResource(R.string.editor_preview_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-            )
-
-            WatermarkRow(
-                watermarkUri = uiState.watermarkUri,
-                watermarkAlpha = uiState.watermarkAlpha,
-                watermarkScale = uiState.watermarkScale,
-                onPickWatermark = { watermarkLauncher.launch("image/png") },
-                onAlphaChange = { viewModel.setWatermarkAlpha(it) },
-                onScaleChange = { viewModel.setWatermarkScale(it) },
-                onClear = { viewModel.clearWatermark() },
-            )
-
-            FadeDurationRow(
-                fadeSecs = uiState.fadeDurationSecs,
-                onFadeSecsChange = viewModel::updateFadeDurationSecs
-            )
-
-            FruitFilterRow(
-                filter1Enabled = uiState.fruitFilter1Enabled,
-                filter2Enabled = uiState.fruitFilter2Enabled,
-                onFilter1Toggle = viewModel::toggleFruitFilter1,
-                onFilter2Toggle = viewModel::toggleFruitFilter2,
-            )
-
             LazyColumn(modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
                 .heightIn(min = 200.dp)
             ) {
+                // Controls that used to sit between the video and the field list
+                // are now inside the scroll area so the video preview can use the
+                // freed vertical space.
+                item {
+                    Text(
+                        stringResource(R.string.editor_preview_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    )
+                }
+                item {
+                    WatermarkRow(
+                        watermarkUri = uiState.watermarkUri,
+                        watermarkAlpha = uiState.watermarkAlpha,
+                        watermarkScale = uiState.watermarkScale,
+                        onPickWatermark = { watermarkLauncher.launch("image/png") },
+                        onAlphaChange = { viewModel.setWatermarkAlpha(it) },
+                        onScaleChange = { viewModel.setWatermarkScale(it) },
+                        onClear = { viewModel.clearWatermark() },
+                    )
+                }
+                item {
+                    FadeDurationRow(
+                        fadeSecs = uiState.fadeDurationSecs,
+                        onFadeSecsChange = viewModel::updateFadeDurationSecs
+                    )
+                }
+                item {
+                    FruitFilterRow(
+                        filter1Enabled = uiState.fruitFilter1Enabled,
+                        filter2Enabled = uiState.fruitFilter2Enabled,
+                        onFilter1Toggle = viewModel::toggleFruitFilter1,
+                        onFilter2Toggle = viewModel::toggleFruitFilter2,
+                    )
+                }
                 items(uiState.fields, key = { it.id }) { field ->
                     FieldRow(
                         field = field,

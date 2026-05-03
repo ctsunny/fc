@@ -31,6 +31,16 @@ enum class TextAlignOption { LEFT, CENTER, RIGHT }
 
 /**
  * 字体族选项，均为系统自带且支持 CJK 中文的字体。
+ *
+ * 视觉对照：
+ *  DEFAULT       → 系统默认无衬线体（Roboto / Noto Sans）
+ *  SANS_SERIF_MEDIUM → 中粗无衬线（sans-serif-medium）
+ *  CONDENSED     → 紧凑无衬线（sans-serif-condensed）
+ *  SERIF         → 衬线体（Noto Serif）
+ *  MONOSPACE     → 等宽体（适合数字/代码）
+ *  LIGHT         → 细体（sans-serif-light）
+ *  BLACK         → 超黑体（sans-serif-black，最粗）
+ *  CONDENSED_LIGHT → 细紧凑体（sans-serif-condensed-light）
  */
 @Serializable
 enum class FontFamilyOption(val label: String) {
@@ -38,4 +48,8 @@ enum class FontFamilyOption(val label: String) {
     SANS_SERIF_MEDIUM("中黑"),
     CONDENSED("紧凑"),
     SERIF("衬线"),
+    MONOSPACE("等宽"),
+    LIGHT("细体"),
+    BLACK("超黑"),
+    CONDENSED_LIGHT("细紧凑"),
 }

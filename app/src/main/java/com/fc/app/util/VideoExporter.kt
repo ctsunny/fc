@@ -59,9 +59,10 @@ class VideoExporter(private val context: Context) {
         aspectRatioOption: AspectRatioOption,
         fadeDurationSecs: Int = 0,
         previewCanvasWidth: Int = 0,
+        fruitFilter1Enabled: Boolean = false,
+        fruitFilter2Enabled: Boolean = false,
     ) {
         val (videoWidth, videoHeight) = getVideoDimensions(inputFile)
-        val videoDurationUs = getVideoDurationUs(inputFile)
         val sourceAspectRatio = if (videoWidth > 0 && videoHeight > 0) {
             videoWidth.toFloat() / videoHeight.toFloat()
         } else {
@@ -73,16 +74,18 @@ class VideoExporter(private val context: Context) {
 
         withContext(Dispatchers.Main) {
             val fadeDurationUs = fadeDurationSecs.toLong() * 1_000_000L
-            val bitmapOverlay: BitmapOverlay = if (fadeDurationUs > 0L && videoDurationUs > 0L) {
-                FadeOutOverlay(overlayBitmap, videoDurationUs, fadeDurationUs)
+            val bitmapOverlay: BitmapOverlay = if (fadeDurationUs > 0L) {
+                FadeOutOverlay(overlayBitmap, fadeDurationUs)
             } else {
                 BitmapOverlay.createStaticBitmapOverlay(overlayBitmap)
             }
             val overlayEffect = OverlayEffect(ImmutableList.of(bitmapOverlay))
-            val videoEffects = mutableListOf<Effect>(
-                Presentation.createForAspectRatio(outputAspectRatio, 0),
-                overlayEffect,
-            )
+            val videoEffects = mutableListOf<Effect>()
+            // Fruit colour-grading filters are applied first (to the raw video signal)
+            if (fruitFilter1Enabled) videoEffects.addAll(FruitFilter.WARM_FRUIT.buildEffects())
+            if (fruitFilter2Enabled) videoEffects.addAll(FruitFilter.FRESH_FRUIT.buildEffects())
+            videoEffects.add(Presentation.createForAspectRatio(outputAspectRatio, 0))
+            videoEffects.add(overlayEffect)
             val effects = Effects(
                 /* audioProcessors= */ emptyList(),
                 /* videoEffects= */ videoEffects,
@@ -143,20 +146,6 @@ class VideoExporter(private val context: Context) {
             // Fallback to a safe default when the file cannot be probed
             // (e.g. unsupported codec, corrupt file, or platform restriction).
             Pair(DEFAULT_VIDEO_WIDTH, DEFAULT_VIDEO_HEIGHT)
-        } finally {
-            retriever.release()
-        }
-    }
-
-    private fun getVideoDurationUs(file: File): Long {
-        val retriever = MediaMetadataRetriever()
-        return try {
-            retriever.setDataSource(file.absolutePath)
-            val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
-                ?.toLongOrNull() ?: 0L
-            durationMs * 1_000L
-        } catch (e: Exception) {
-            0L
         } finally {
             retriever.release()
         }
@@ -267,34 +256,34 @@ class VideoExporter(private val context: Context) {
 }
 
 /**
- * A [BitmapOverlay] that keeps the overlay fully visible and then linearly fades it out
- * over the last [fadeDurationUs] microseconds of the video.
+ * A [BitmapOverlay] that starts fully visible at t=0 and linearly fades out so that the
+ * overlay is completely transparent by [fadeDurationUs] microseconds into the video.
+ *
+ * Semantics (per the UI label "文字消失时长"):
+ *  - fadeDurationSecs = 1 → text is fully gone after 1 second
+ *  - fadeDurationSecs = 3 → text is fully gone after 3 seconds
+ *  - fadeDurationSecs = 0 → no fade, overlay stays visible the whole video
  */
 @OptIn(UnstableApi::class)
 private class FadeOutOverlay(
     private val bitmap: Bitmap,
-    private val videoDurationUs: Long,
     private val fadeDurationUs: Long,
 ) : BitmapOverlay() {
 
     override fun getBitmap(presentationTimeUs: Long): Bitmap = bitmap
 
     override fun getOverlaySettings(presentationTimeUs: Long): OverlaySettings {
-        // Ensure the fade window never starts before the video begins.
-        val effectiveFadeDurationUs = fadeDurationUs.coerceAtMost(videoDurationUs)
-        val fadeStartUs = videoDurationUs - effectiveFadeDurationUs
         val alpha = when {
-            effectiveFadeDurationUs <= 0L -> 1f
-            presentationTimeUs >= videoDurationUs -> 0f
-            presentationTimeUs <= fadeStartUs -> 1f
+            fadeDurationUs <= 0L -> 1f
+            presentationTimeUs >= fadeDurationUs -> 0f
             else -> {
-                val elapsed = (presentationTimeUs - fadeStartUs).toFloat()
-                val window = effectiveFadeDurationUs.toFloat()
+                val elapsed = presentationTimeUs.toFloat()
+                val window = fadeDurationUs.toFloat()
                 (1f - elapsed / window).coerceIn(0f, 1f)
             }
         }
         return OverlaySettings.Builder()
-            .setAlphaScale(alpha.coerceIn(0f, 1f))
+            .setAlphaScale(alpha)
             .build()
     }
 }

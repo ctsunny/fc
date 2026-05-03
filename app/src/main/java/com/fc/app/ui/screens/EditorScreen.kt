@@ -31,6 +31,7 @@ import com.fc.app.R
 import com.fc.app.ui.components.DraggableCanvas
 import com.fc.app.ui.components.StylePanel
 import com.fc.app.util.AspectRatioOption
+import com.fc.app.util.FruitFilter
 import com.fc.app.viewmodel.EditorViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -117,6 +118,13 @@ fun EditorScreen(
                 onFadeSecsChange = viewModel::updateFadeDurationSecs
             )
 
+            FruitFilterRow(
+                filter1Enabled = uiState.fruitFilter1Enabled,
+                filter2Enabled = uiState.fruitFilter2Enabled,
+                onFilter1Toggle = viewModel::toggleFruitFilter1,
+                onFilter2Toggle = viewModel::toggleFruitFilter2,
+            )
+
             LazyColumn(modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
@@ -176,7 +184,7 @@ private fun FadeDurationRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            if (fadeSecs == 0) "文字淡出：关闭" else "文字淡出：${fadeSecs}秒",
+            if (fadeSecs == 0) "文字消失：关闭" else "文字消失：${fadeSecs}秒内",
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.width(110.dp)
         )
@@ -247,3 +255,58 @@ private fun FieldRow(
     }
 }
 
+@Composable
+private fun FruitFilterRow(
+    filter1Enabled: Boolean,
+    filter2Enabled: Boolean,
+    onFilter1Toggle: () -> Unit,
+    onFilter2Toggle: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+    ) {
+        Text(
+            "水果专业滤镜",
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            FruitFilter.entries.forEach { filter ->
+                val enabled = when (filter) {
+                    FruitFilter.WARM_FRUIT -> filter1Enabled
+                    FruitFilter.FRESH_FRUIT -> filter2Enabled
+                }
+                val onToggle = when (filter) {
+                    FruitFilter.WARM_FRUIT -> onFilter1Toggle
+                    FruitFilter.FRESH_FRUIT -> onFilter2Toggle
+                }
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Switch(
+                        checked = enabled,
+                        onCheckedChange = { onToggle() },
+                        modifier = Modifier.size(width = 44.dp, height = 24.dp)
+                    )
+                    Column {
+                        Text(filter.label, style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            filter.description,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            maxLines = 2
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

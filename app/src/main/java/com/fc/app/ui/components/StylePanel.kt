@@ -3,6 +3,7 @@ package com.fc.app.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FormatBold
@@ -17,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.fc.app.data.model.FontFamilyOption
 import com.fc.app.data.model.OverlayTextField
+import com.fc.app.util.toComposeFontFamily
 
 /** 8 个预设颜色供快速选取 */
 val presetColors = listOf(
@@ -98,14 +100,27 @@ fun StylePanel(
         }
         Spacer(Modifier.height(6.dp))
 
-        // 字体
+        // 字体 — each chip renders its label in the actual font family for visual preview
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("字体", style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(32.dp))
-            FontFamilyOption.entries.forEach { option ->
+        }
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(FontFamilyOption.entries.size) { index ->
+                val option = FontFamilyOption.entries[index]
                 FilterChip(
                     selected = field.fontFamily == option,
                     onClick = { onFontFamilyChange(option) },
-                    label = { Text(option.label, style = MaterialTheme.typography.labelSmall) }
+                    label = {
+                        Text(
+                            option.label,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = option.toComposeFontFamily()
+                            )
+                        )
+                    }
                 )
             }
         }

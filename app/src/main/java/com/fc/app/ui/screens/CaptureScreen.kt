@@ -45,9 +45,13 @@ fun CaptureScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    // Use rememberUpdatedState so launcher callbacks always read the latest selectedRatio
+    // even if the user changes the chip selection while the camera/gallery is open.
+    val currentSelectedRatio by rememberUpdatedState(selectedRatio)
+
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
-    ) { uri: Uri? -> uri?.let { onVideoSelected(it, selectedRatio) } }
+    ) { uri: Uri? -> uri?.let { onVideoSelected(it, currentSelectedRatio) } }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CaptureVideo()
@@ -60,7 +64,7 @@ fun CaptureScreen(
                 scope.launch(Dispatchers.IO) {
                     saveVideoFileToMediaStore(context, file)
                 }
-                onVideoSelected(uri, selectedRatio)
+                onVideoSelected(uri, currentSelectedRatio)
             }
         } else {
             tempVideoFile?.delete()
@@ -107,6 +111,15 @@ fun CaptureScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            // Company branding header
+            Text(
+                "湖北果旺角水果仓储",
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.height(4.dp))
+
             Text("开始创作", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
             Text(
                 "选择或拍摄视频，套用预设模板后导出",

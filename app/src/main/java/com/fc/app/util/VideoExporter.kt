@@ -16,7 +16,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.BitmapOverlay
 import androidx.media3.effect.OverlayEffect
-import androidx.media3.effect.OverlaySettings
 import androidx.media3.effect.Presentation
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
@@ -63,14 +62,7 @@ class VideoExporter(private val context: Context) {
         val overlayBitmap = buildOverlayBitmap(overlays, outputFrameSize.width, outputFrameSize.height)
 
         withContext(Dispatchers.Main) {
-            val overlaySettings = OverlaySettings.Builder()
-                .setScale(2f, 2f)
-                .build()
-
-            val bitmapOverlay = BitmapOverlay.createStaticBitmapOverlay(
-                overlayBitmap,
-                overlaySettings,
-            )
+            val bitmapOverlay = BitmapOverlay.createStaticBitmapOverlay(overlayBitmap)
             val overlayEffect = OverlayEffect(ImmutableList.of(bitmapOverlay))
             val videoEffects = mutableListOf<Effect>(
                 Presentation.createForAspectRatio(outputAspectRatio, 0),
@@ -140,17 +132,23 @@ class VideoExporter(private val context: Context) {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
+        // Scale factor: convert sp-based font sizes to bitmap pixels.
+        // The editor preview canvas fills the screen width in device pixels
+        // (screenWidthPx). The export bitmap has its own resolution (width).
+        // We keep the same visual proportion: fontSize * scaledDensity gives
+        // the size in screen pixels; multiply by (width / screenWidthPx) to
+        // map that to bitmap pixels.
+        val screenWidthPx = context.resources.displayMetrics.widthPixels.toFloat()
+        val fontScale = context.resources.displayMetrics.scaledDensity * (width.toFloat() / screenWidthPx)
+
         for (field in overlays) {
             if (!field.isVisible || field.text.isBlank()) continue
 
             val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG).apply {
                 // field.fontSize stores the editor's logical text size in sp units.
-                // The editor preview currently renders text with Compose `fontSize.sp`
-                // in DraggableCanvas.textStyleFor().
-                // Export must therefore convert the stored logical font size with `scaledDensity`
-                // so StaticLayout uses the same sp-based sizing model; if preview sizing changes,
-                // this conversion should be updated together.
-                textSize = field.fontSize * context.resources.displayMetrics.scaledDensity
+                // fontScale converts sp to bitmap pixels, accounting for both screen
+                // density and the ratio between the export bitmap and screen widths.
+                textSize = field.fontSize * fontScale
                 typeface = if (field.isBold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
                 color = parseColorOrDefault(field.colorHex, Color.WHITE)
                 if (field.hasShadow) setShadowLayer(4f, 2f, 2f, Color.BLACK)

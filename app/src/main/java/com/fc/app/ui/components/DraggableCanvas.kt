@@ -74,22 +74,24 @@ fun DraggableCanvas(
                             change.consume()
                             val fid = draggingFieldId ?: return@detectDragGestures
                             val measuredField = measuredFields.firstOrNull { it.field.id == fid } ?: return@detectDragGestures
-                            if (size.width == 0f || size.height == 0f) return@detectDragGestures
+                            val canvasWidth = size.width.toFloat()
+                            val canvasHeight = size.height.toFloat()
+                            if (canvasWidth == 0f || canvasHeight == 0f) return@detectDragGestures
 
                             val newAnchorX = clampOverlayAnchorX(
                                 desiredX = measuredField.anchorX + delta.x,
                                 contentWidth = measuredField.layout.size.width.toFloat(),
-                                canvasWidth = size.width,
+                                canvasWidth = canvasWidth,
                                 align = measuredField.field.textAlign
                             )
                             val newAnchorY = clampOverlayAnchorY(
                                 desiredY = measuredField.anchorY + delta.y,
                                 contentHeight = measuredField.layout.size.height.toFloat(),
-                                canvasHeight = size.height
+                                canvasHeight = canvasHeight
                             )
 
-                            val newX = newAnchorX / size.width
-                            val newY = newAnchorY / size.height
+                            val newX = newAnchorX / canvasWidth
+                            val newY = newAnchorY / canvasHeight
                             onFieldMoved(fid, newX, newY)
                         },
                         onDragEnd = { draggingFieldId = null },

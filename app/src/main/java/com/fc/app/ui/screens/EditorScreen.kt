@@ -1,6 +1,8 @@
 package com.fc.app.ui.screens
 
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -9,8 +11,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -28,6 +34,9 @@ import coil.decode.VideoFrameDecoder
 import com.fc.app.data.model.FontFamilyOption
 import com.fc.app.data.model.OverlayTextField
 import com.fc.app.R
+import com.fc.app.data.PresetTemplates
+import com.fc.app.data.UserPreset
+import com.fc.app.data.model.StyleTemplate
 import com.fc.app.ui.components.DraggableCanvas
 import com.fc.app.ui.components.StylePanel
 import com.fc.app.util.AspectRatioOption
@@ -43,8 +52,13 @@ fun EditorScreen(
     onBackClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val userPresets by viewModel.userPresetsFlow.collectAsState()
     val context = LocalContext.current
     var expandedFieldId by remember { mutableStateOf<String?>(null) }
+
+    val watermarkLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? -> viewModel.setWatermarkUri(uri) }
 
     Scaffold(
         topBar = {
@@ -63,6 +77,15 @@ fun EditorScreen(
             AspectRatioSelectorRow(
                 selected = uiState.aspectRatioOption,
                 onSelected = viewModel::updateAspectRatioOption
+            )
+
+            // Preset selector: load built-in templates or user presets; save current as preset
+            PresetSelectorRow(
+                userPresets = userPresets,
+                builtInTemplates = PresetTemplates.all,
+                onApplyUserPreset = { viewModel.applyUserPreset(it) },
+                onApplyTemplate = { viewModel.applyTemplate(it) },
+                onSavePreset = { name -> viewModel.saveCurrentAsPreset(name) },
             )
 
             // Preview area – outer black container takes all available weight space;
@@ -113,6 +136,16 @@ fun EditorScreen(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
             )
 
+            WatermarkRow(
+                watermarkUri = uiState.watermarkUri,
+                watermarkAlpha = uiState.watermarkAlpha,
+                watermarkScale = uiState.watermarkScale,
+                onPickWatermark = { watermarkLauncher.launch("image/png") },
+                onAlphaChange = { viewModel.setWatermarkAlpha(it) },
+                onScaleChange = { viewModel.setWatermarkScale(it) },
+                onClear = { viewModel.clearWatermark() },
+            )
+
             FadeDurationRow(
                 fadeSecs = uiState.fadeDurationSecs,
                 onFadeSecsChange = viewModel::updateFadeDurationSecs
@@ -144,11 +177,148 @@ fun EditorScreen(
                         onSize = { viewModel.updateFieldFontSize(field.id, it) },
                         onColor = { viewModel.updateFieldColor(field.id, it) },
                         onBold = { viewModel.updateFieldBold(field.id, it) },
-                        onFontFamily = { viewModel.updateFieldFontFamily(field.id, it) }
+                        onFontFamily = { viewModel.updateFieldFontFamily(field.id, it) },
+                        onHasBackground = { viewModel.updateFieldHasBackground(field.id, it) },
+                        onBackgroundAlpha = { viewModel.updateFieldBackgroundAlpha(field.id, it) },
                     )
                 }
                 }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PresetSelectorRow(
+    userPresets: List<UserPreset>,
+    builtInTemplates: List<StyleTemplate>,
+    onApplyUserPreset: (UserPreset) -> Unit,
+    onApplyTemplate: (StyleTemplate) -> Unit,
+    onSavePreset: (String) -> Unit,
+) {
+    var dropdownExpanded by remember { mutableStateOf(false) }
+    var saveDialogVisible by remember { mutableStateOf(false) }
+    var saveNameInput by remember { mutableStateOf("") }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text("预设", style = MaterialTheme.typography.titleSmall, modifier = Modifier.width(32.dp))
+
+        // Dropdown button
+        ExposedDropdownMenuBox(
+            expanded = dropdownExpanded,
+            onExpandedChange = { dropdownExpanded = it },
+            modifier = Modifier.weight(1f)
+        ) {
+            OutlinedTextField(
+                value = "选择预设套用",
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = {
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                },
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth(),
+                textStyle = MaterialTheme.typography.bodySmall,
+                singleLine = true
+            )
+            ExposedDropdownMenu(
+                expanded = dropdownExpanded,
+                onDismissRequest = { dropdownExpanded = false }
+            ) {
+                // Built-in templates section
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            "── 内置模板 ──",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    onClick = {},
+                    enabled = false
+                )
+                builtInTemplates.forEach { template ->
+                    DropdownMenuItem(
+                        text = { Text(template.name, style = MaterialTheme.typography.bodySmall) },
+                        onClick = {
+                            onApplyTemplate(template)
+                            dropdownExpanded = false
+                        }
+                    )
+                }
+                // User presets section
+                if (userPresets.isNotEmpty()) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "── 我的预设 ──",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        onClick = {},
+                        enabled = false
+                    )
+                    userPresets.forEach { preset ->
+                        DropdownMenuItem(
+                            text = { Text(preset.name, style = MaterialTheme.typography.bodySmall) },
+                            onClick = {
+                                onApplyUserPreset(preset)
+                                dropdownExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        // Save current as preset
+        IconButton(
+            onClick = {
+                saveNameInput = ""
+                saveDialogVisible = true
+            }
+        ) {
+            Icon(Icons.Default.Save, contentDescription = "保存为预设", tint = MaterialTheme.colorScheme.primary)
+        }
+    }
+
+    if (saveDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { saveDialogVisible = false },
+            title = { Text("保存当前为预设") },
+            text = {
+                OutlinedTextField(
+                    value = saveNameInput,
+                    onValueChange = { saveNameInput = it },
+                    label = { Text("预设名称") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (saveNameInput.isNotBlank()) {
+                            onSavePreset(saveNameInput.trim())
+                            saveDialogVisible = false
+                        }
+                    },
+                    enabled = saveNameInput.isNotBlank()
+                ) { Text("保存") }
+            },
+            dismissButton = {
+                TextButton(onClick = { saveDialogVisible = false }) { Text("取消") }
+            }
+        )
     }
 }
 
@@ -209,6 +379,8 @@ private fun FieldRow(
     onColor: (String) -> Unit,
     onBold: (Boolean) -> Unit,
     onFontFamily: (FontFamilyOption) -> Unit = {},
+    onHasBackground: (Boolean) -> Unit = {},
+    onBackgroundAlpha: (Int) -> Unit = {},
 ) {
     Column {
         Row(
@@ -248,6 +420,8 @@ private fun FieldRow(
                 onColorChange = onColor,
                 onBoldChange = onBold,
                 onFontFamilyChange = onFontFamily,
+                onHasBackgroundChange = onHasBackground,
+                onBackgroundAlphaChange = onBackgroundAlpha,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
             )
         }
@@ -306,6 +480,55 @@ private fun FruitFilterRow(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WatermarkRow(
+    watermarkUri: Uri?,
+    watermarkAlpha: Float,
+    watermarkScale: Float,
+    onPickWatermark: () -> Unit,
+    onAlphaChange: (Float) -> Unit,
+    onScaleChange: (Float) -> Unit,
+    onClear: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("水印", style = MaterialTheme.typography.titleSmall, modifier = Modifier.width(36.dp))
+            OutlinedButton(
+                onClick = onPickWatermark,
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    if (watermarkUri != null) "已导入（点击更换）" else "导入 PNG 水印",
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1
+                )
+            }
+            if (watermarkUri != null) {
+                IconButton(onClick = onClear, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Clear, contentDescription = "移除水印", modifier = Modifier.size(18.dp))
+                }
+            }
+        }
+        if (watermarkUri != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("透明度 ${(watermarkAlpha * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(80.dp))
+                Slider(value = watermarkAlpha, onValueChange = onAlphaChange, valueRange = 0f..1f, modifier = Modifier.weight(1f))
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("大小 ${(watermarkScale * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(80.dp))
+                Slider(value = watermarkScale, onValueChange = onScaleChange, valueRange = 0.05f..1f, modifier = Modifier.weight(1f))
             }
         }
     }

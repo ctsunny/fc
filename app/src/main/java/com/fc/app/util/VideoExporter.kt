@@ -2,6 +2,7 @@ package com.fc.app.util
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.text.Layout
@@ -61,6 +62,11 @@ class VideoExporter(private val context: Context) {
         previewCanvasWidth: Int = 0,
         fruitFilter1Enabled: Boolean = false,
         fruitFilter2Enabled: Boolean = false,
+        watermarkUri: Uri? = null,
+        watermarkAlpha: Float = 1f,
+        watermarkXFraction: Float = 0.5f,
+        watermarkYFraction: Float = 0.85f,
+        watermarkScale: Float = 0.3f,
     ) {
         val (videoWidth, videoHeight) = getVideoDimensions(inputFile)
         val sourceAspectRatio = if (videoWidth > 0 && videoHeight > 0) {
@@ -70,7 +76,21 @@ class VideoExporter(private val context: Context) {
         }
         val outputAspectRatio = aspectRatioOption.resolve(sourceAspectRatio)
         val outputFrameSize = calculateOutputFrameSize(videoWidth, videoHeight, outputAspectRatio)
-        val overlayBitmap = buildOverlayBitmap(overlays, outputFrameSize.width, outputFrameSize.height, previewCanvasWidth)
+
+        // Load watermark bitmap on IO thread before switching to Main
+        val watermarkBitmap: Bitmap? = watermarkUri?.let { uri ->
+            try {
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    BitmapFactory.decodeStream(stream)
+                }
+            } catch (e: Exception) { null }
+        }
+
+        val overlayBitmap = buildOverlayBitmap(
+            overlays, outputFrameSize.width, outputFrameSize.height, previewCanvasWidth,
+            watermarkBitmap, watermarkAlpha, watermarkXFraction, watermarkYFraction, watermarkScale,
+        )
+        watermarkBitmap?.recycle()
 
         withContext(Dispatchers.Main) {
             val fadeDurationUs = fadeDurationSecs.toLong() * 1_000_000L
@@ -156,6 +176,11 @@ class VideoExporter(private val context: Context) {
         width: Int,
         height: Int,
         previewCanvasWidth: Int = 0,
+        watermarkBitmap: Bitmap? = null,
+        watermarkAlpha: Float = 1f,
+        watermarkXFraction: Float = 0.5f,
+        watermarkYFraction: Float = 0.85f,
+        watermarkScale: Float = 0.3f,
     ): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -251,6 +276,21 @@ class VideoExporter(private val context: Context) {
             layout.draw(canvas)
             canvas.restore()
         }
+
+        // Draw PNG watermark if provided
+        if (watermarkBitmap != null && !watermarkBitmap.isRecycled && watermarkAlpha > 0f) {
+            val wmW = (width * watermarkScale).toInt().coerceAtLeast(1)
+            val wmH = (wmW.toFloat() * watermarkBitmap.height / watermarkBitmap.width).toInt().coerceAtLeast(1)
+            val scaled = Bitmap.createScaledBitmap(watermarkBitmap, wmW, wmH, true)
+            val wmX = (watermarkXFraction * width - wmW / 2f).toInt().coerceIn(0, (width - wmW).coerceAtLeast(0))
+            val wmY = (watermarkYFraction * height - wmH / 2f).toInt().coerceIn(0, (height - wmH).coerceAtLeast(0))
+            val wmPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                alpha = (watermarkAlpha * 255).toInt().coerceIn(0, 255)
+            }
+            canvas.drawBitmap(scaled, wmX.toFloat(), wmY.toFloat(), wmPaint)
+            if (scaled !== watermarkBitmap) scaled.recycle()
+        }
+
         return bitmap
     }
 }

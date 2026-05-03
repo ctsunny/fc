@@ -26,6 +26,21 @@ val presetColors = listOf(
     "#FFE100", "#00CC44", "#0088FF", "#CC00FF"
 )
 
+/** Extract the alpha component (0–255) from a "#AARRGGBB" or "#RRGGBB" hex string. */
+internal fun alphaFromHex(hex: String): Int {
+    val c = hex.removePrefix("#")
+    return if (c.length == 8) c.substring(0, 2).toIntOrNull(16) ?: DEFAULT_BG_ALPHA else 255
+}
+
+/** Return a new hex with the alpha replaced, keeping the existing RGB. */
+internal fun setAlphaInHex(hex: String, alpha: Int): String {
+    val c = hex.removePrefix("#")
+    val rgb = if (c.length == 8) c.substring(2) else if (c.length == 6) c else "000000"
+    return "#%02X$rgb".format(alpha.coerceIn(0, 255))
+}
+
+private const val DEFAULT_BG_ALPHA = 136
+
 @Composable
 fun StylePanel(
     field: OverlayTextField,
@@ -34,6 +49,8 @@ fun StylePanel(
     onColorChange: (String) -> Unit,
     onBoldChange: (Boolean) -> Unit,
     onFontFamilyChange: (FontFamilyOption) -> Unit = {},
+    onHasBackgroundChange: (Boolean) -> Unit = {},
+    onBackgroundAlphaChange: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -100,6 +117,33 @@ fun StylePanel(
         }
         Spacer(Modifier.height(6.dp))
 
+        // 字体背景开关 + 透明度
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("字幕背景", style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(56.dp))
+            Switch(
+                checked = field.hasBackground,
+                onCheckedChange = onHasBackgroundChange,
+                modifier = Modifier.size(width = 44.dp, height = 24.dp)
+            )
+        }
+        if (field.hasBackground) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val currentAlpha = alphaFromHex(field.backgroundColorHex)
+                Text(
+                    "透明度 ${(currentAlpha * 100 / 255)}%",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.width(76.dp)
+                )
+                Slider(
+                    value = currentAlpha.toFloat(),
+                    onValueChange = { onBackgroundAlphaChange(it.toInt()) },
+                    valueRange = 0f..255f,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+
         // 字体 — each chip renders its label in the actual font family for visual preview
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("字体", style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(32.dp))
@@ -138,3 +182,5 @@ fun StylePanel(
         }
     }
 }
+
+

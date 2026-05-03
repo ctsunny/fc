@@ -45,7 +45,7 @@ fun CaptureScreen(onVideoSelected: (Uri) -> Unit) {
             cameraLauncher.launch(uri)
         } else {
             scope.launch {
-                snackbarHostState.showSnackbar("需要相机权限后才能拍摄新视频")
+                snackbarHostState.showSnackbar("需要相机权限才能拍摄新视频")
             }
         }
     }

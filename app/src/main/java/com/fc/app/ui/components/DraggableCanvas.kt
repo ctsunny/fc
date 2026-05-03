@@ -46,7 +46,7 @@ fun DraggableCanvas(
     val textMeasurer = rememberTextMeasurer()
     var draggingFieldId by remember { mutableStateOf<String?>(null) }
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
-    val measuredFields = remember(fields, canvasSize) {
+    val measuredFields = remember(fields, canvasSize, textMeasurer) {
         measureFields(
             fields = fields,
             textMeasurer = textMeasurer,

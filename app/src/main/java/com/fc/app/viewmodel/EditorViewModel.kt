@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.fc.app.util.VideoExporter
@@ -37,6 +38,9 @@ data class EditorUiState(
 )
 
 class EditorViewModel(application: Application) : AndroidViewModel(application) {
+    private companion object {
+        private const val TAG = "EditorViewModel"
+    }
 
     private val _uiState = MutableStateFlow(EditorUiState())
     val uiState: StateFlow<EditorUiState> = _uiState.asStateFlow()
@@ -217,6 +221,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             }
             return uri
         } catch (e: Exception) {
+            Log.w(TAG, "Cleaning up failed MediaStore export entry: $uri", e)
             ctx.contentResolver.delete(uri, null, null)
             throw e
         }

@@ -3,6 +3,7 @@ package com.fc.app.util
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.util.Log
 
 data class VideoDimensions(
     val width: Int,
@@ -11,6 +12,8 @@ data class VideoDimensions(
     val aspectRatio: Float
         get() = if (height <= 0) 16f / 9f else width.toFloat() / height.toFloat()
 }
+
+private const val TAG = "VideoMetadata"
 
 fun readVideoDimensions(context: Context, uri: Uri): VideoDimensions? {
     val retriever = MediaMetadataRetriever()
@@ -27,7 +30,8 @@ fun readVideoDimensions(context: Context, uri: Uri): VideoDimensions? {
             ?: 0
 
         if (rotation % 180 == 0) VideoDimensions(width, height) else VideoDimensions(height, width)
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        Log.w(TAG, "Unable to read video metadata for preview: $uri", e)
         null
     } finally {
         retriever.release()

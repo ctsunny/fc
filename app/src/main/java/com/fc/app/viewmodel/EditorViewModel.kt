@@ -9,12 +9,14 @@ import android.os.Environment
 import android.provider.MediaStore
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.arthenica.ffmpegkit.FFmpegKit
-import com.arthenica.ffmpegkit.ReturnCode
+import com.fc.app.util.VideoExporter
 import com.fc.app.data.PresetTemplates
 import com.fc.app.data.model.OverlayTextField
 import com.fc.app.data.model.StyleTemplate
 import com.fc.app.data.model.TemplateCategory
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.transformer.ExportException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -90,6 +92,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         _uiState.update { it.copy(fields = emptyList(), selectedFieldId = null, exportedFileUri = null, exportMessage = "") }
     }
 
+    @OptIn(UnstableApi::class)
     fun exportVideo() {
         val state = _uiState.value
         val videoUri = state.videoUri ?: return
@@ -104,51 +107,22 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                 inputFile = copyUriToCache(ctx, videoUri)
                 outputFile = File(ctx.cacheDir, "output_${System.currentTimeMillis()}.mp4")
 
-                val filter = buildDrawtextFilter(state.fields)
-                val cmd = buildString {
-                    append("-y -i \"${inputFile.absolutePath}\" ")
-                    if (filter.isNotEmpty()) append("-vf \"$filter\" ")
-                    append("-c:v libx264 -preset fast -crf 23 -c:a copy \"${outputFile.absolutePath}\"")
-                }
-
                 _uiState.update { it.copy(exportMessage = "合成中，请稍候...") }
 
-                val session = FFmpegKit.execute(cmd)
-                if (ReturnCode.isSuccess(session.returnCode)) {
-                    val savedUri = saveToMediaStore(ctx, outputFile)
-                    _uiState.update {
-                        it.copy(isExporting = false, exportProgress = 1f,
-                            exportMessage = "导出成功！", exportedFileUri = savedUri)
-                    }
-                } else {
-                    _uiState.update {
-                        it.copy(isExporting = false, exportMessage = "导出失败：${session.failStackTrace ?: "未知错误"}")
-                    }
+                VideoExporter(ctx).export(inputFile, outputFile, state.fields)
+
+                val savedUri = saveToMediaStore(ctx, outputFile)
+                _uiState.update {
+                    it.copy(isExporting = false, exportProgress = 1f,
+                        exportMessage = "导出成功！", exportedFileUri = savedUri)
                 }
+            } catch (e: ExportException) {
+                _uiState.update { it.copy(isExporting = false, exportMessage = "导出失败：${e.message}") }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isExporting = false, exportMessage = "错误：${e.message}") }
             } finally {
                 inputFile?.delete()
-                // outputFile is kept until MediaStore copy completes; clean up after save
             }
-        }
-    }
-
-    // Build FFmpeg drawtext filter chain from visible non-empty fields
-    private fun buildDrawtextFilter(fields: List<OverlayTextField>): String {
-        val active = fields.filter { it.isVisible && it.text.isNotBlank() }
-        if (active.isEmpty()) return ""
-        return active.joinToString(",") { f ->
-            val x = "w*${f.xFraction}"
-            val y = "h*${f.yFraction}"
-            val color = f.colorHex.trimStart('#')
-            val shadow = if (f.hasShadow) ":shadowcolor=black:shadowx=2:shadowy=2" else ""
-            // Escape single-quotes and colons for FFmpeg filter syntax
-            val safeText = f.text
-                .replace("\\", "\\\\")
-                .replace("'", "\u2019") // replace curly apostrophe to avoid shell issues
-                .replace(":", "\\:")
-            "drawtext=text='$safeText':x=$x:y=$y:fontsize=${f.fontSize.toInt()}:fontcolor=$color$shadow"
         }
     }
 

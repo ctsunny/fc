@@ -239,7 +239,10 @@ private fun PresetSelectorRow(
                 expanded = dropdownExpanded,
                 onDismissRequest = { dropdownExpanded = false }
             ) {
-                // Built-in templates section
+                // Built-in generic templates section
+                val genericTemplates = builtInTemplates.filter { it.category != com.fc.app.data.model.TemplateCategory.FRUIT }
+                val fruitTemplates = builtInTemplates.filter { it.category == com.fc.app.data.model.TemplateCategory.FRUIT }
+
                 DropdownMenuItem(
                     text = {
                         Text(
@@ -251,7 +254,7 @@ private fun PresetSelectorRow(
                     onClick = {},
                     enabled = false
                 )
-                builtInTemplates.forEach { template ->
+                genericTemplates.forEach { template ->
                     DropdownMenuItem(
                         text = { Text(template.name, style = MaterialTheme.typography.bodySmall) },
                         onClick = {
@@ -259,6 +262,30 @@ private fun PresetSelectorRow(
                             dropdownExpanded = false
                         }
                     )
+                }
+                // Fruit promotional templates section
+                if (fruitTemplates.isNotEmpty()) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "── 🍎 水果促销模板 ──",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        onClick = {},
+                        enabled = false
+                    )
+                    fruitTemplates.forEach { template ->
+                        DropdownMenuItem(
+                            text = { Text(template.name, style = MaterialTheme.typography.bodySmall) },
+                            onClick = {
+                                onApplyTemplate(template)
+                                dropdownExpanded = false
+                            }
+                        )
+                    }
                 }
                 // User presets section
                 if (userPresets.isNotEmpty()) {

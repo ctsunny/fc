@@ -50,6 +50,10 @@ class VideoExporter(private val context: Context) {
      * Must be called from a coroutine; switches to the main thread internally as required by
      * the Transformer API.
      *
+     * If no effects are needed (no visible overlays, no filters, no watermark, and the
+     * aspect ratio is ORIGINAL), the input file is copied directly to skip re-encoding
+     * and dramatically speed up the operation.
+     *
      * @param fadeDurationSecs seconds over which the overlay fades out at the end of the video.
      *   Pass 0 to keep the overlay visible for the entire duration.
      */
@@ -68,6 +72,18 @@ class VideoExporter(private val context: Context) {
         watermarkYFraction: Float = 0.85f,
         watermarkScale: Float = 0.3f,
     ) {
+        val hasVisibleOverlays = overlays.any { it.isVisible && it.text.isNotBlank() }
+        val hasWatermark = watermarkUri != null
+        val hasFilters = fruitFilter1Enabled || fruitFilter2Enabled
+        val needsAspectRatioCrop = aspectRatioOption != AspectRatioOption.ORIGINAL
+
+        // Fast path: if there's truly nothing to do, just copy the file.
+        if (!hasVisibleOverlays && !hasWatermark && !hasFilters && !needsAspectRatioCrop) {
+            withContext(Dispatchers.IO) {
+                inputFile.copyTo(outputFile, overwrite = true)
+            }
+            return
+        }
         val (videoWidth, videoHeight) = getVideoDimensions(inputFile)
         val sourceAspectRatio = if (videoWidth > 0 && videoHeight > 0) {
             videoWidth.toFloat() / videoHeight.toFloat()
@@ -104,7 +120,8 @@ class VideoExporter(private val context: Context) {
             // Fruit colour-grading filters are applied first (to the raw video signal)
             if (fruitFilter1Enabled) videoEffects.addAll(FruitFilter.WARM_FRUIT.buildEffects())
             if (fruitFilter2Enabled) videoEffects.addAll(FruitFilter.FRESH_FRUIT.buildEffects())
-            videoEffects.add(Presentation.createForAspectRatio(outputAspectRatio, 0))
+            // Only add the aspect-ratio crop effect when the output ratio differs from the source.
+            if (needsAspectRatioCrop) videoEffects.add(Presentation.createForAspectRatio(outputAspectRatio, 0))
             videoEffects.add(overlayEffect)
             val effects = Effects(
                 /* audioProcessors= */ emptyList(),

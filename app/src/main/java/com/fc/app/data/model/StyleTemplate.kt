@@ -14,5 +14,6 @@ data class StyleTemplate(
 enum class TemplateCategory {
     ECOMMERCE,  // 电商
     STORE,      // 实体店
-    ACTIVITY    // 活动/促销
+    ACTIVITY,   // 活动/促销
+    FRUIT       // 水果促销
 }

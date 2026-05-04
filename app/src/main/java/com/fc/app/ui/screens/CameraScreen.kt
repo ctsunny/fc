@@ -4,23 +4,30 @@ import android.Manifest
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.*
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.FlashOff
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
@@ -29,6 +36,7 @@ import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import java.io.File
+import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.delay
@@ -39,6 +47,13 @@ private const val TAG = "CameraScreen"
 /**
  * 内置 CameraX 拍摄页面，录制时使用设备支持的最高画质，
  * 替代系统原生相机（后者默认只有 480×640）。
+ *
+ * 镜头控制：
+ *  - 双指捏合/张开 → 缩放
+ *  - 底部滑块 → 精细缩放
+ *  - 点击预览画面 → 对焦
+ *  - 闪光灯按钮 → 开/关手电筒
+ *  - 翻转按钮 → 前/后摄像头切换
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,14 +65,18 @@ fun CameraScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     var cameraProvider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
+    var camera by remember { mutableStateOf<Camera?>(null) }
     var videoCapture by remember { mutableStateOf<VideoCapture<Recorder>?>(null) }
     var recording by remember { mutableStateOf<Recording?>(null) }
     var isRecording by remember { mutableStateOf(false) }
     var recordingSeconds by remember { mutableIntStateOf(0) }
     var lensFacing by remember { mutableStateOf(CameraSelector.LENS_FACING_BACK) }
     var hasPermissions by remember { mutableStateOf(false) }
+    var torchEnabled by remember { mutableStateOf(false) }
+    // Linear zoom 0f..1f
+    var zoomLevel by remember { mutableFloatStateOf(0f) }
 
-    // Count up seconds while recording; exits automatically when isRecording flips to false
+    // Count up seconds while recording
     LaunchedEffect(isRecording) {
         if (isRecording) {
             recordingSeconds = 0
@@ -142,10 +161,26 @@ fun CameraScreen(
 
         try {
             provider.unbindAll()
-            provider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, vc)
+            val boundCamera = provider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, vc)
+            camera = boundCamera
+            // Reset state when switching cameras
+            zoomLevel = 0f
+            torchEnabled = false
+            boundCamera.cameraControl.setLinearZoom(0f)
+            boundCamera.cameraControl.enableTorch(false)
         } catch (e: Exception) {
             Log.e(TAG, "Camera bind error", e)
         }
+    }
+
+    // Apply zoom level changes to camera
+    LaunchedEffect(zoomLevel) {
+        camera?.cameraControl?.setLinearZoom(zoomLevel.coerceIn(0f, 1f))
+    }
+
+    // Apply torch state changes to camera
+    LaunchedEffect(torchEnabled) {
+        camera?.cameraControl?.enableTorch(torchEnabled)
     }
 
     DisposableEffect(Unit) {
@@ -174,10 +209,32 @@ fun CameraScreen(
                 .padding(padding)
                 .background(Color.Black)
         ) {
-            // Camera preview
+            // Camera preview with pinch-to-zoom and tap-to-focus
             AndroidView(
                 factory = { previewView },
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        // Pinch-to-zoom gesture
+                        detectTransformGestures { _, _, zoom, _ ->
+                            val currentZoom = zoomLevel
+                            // Each pinch event multiplies zoom by the scale factor;
+                            // map it to the linear 0..1 range incrementally.
+                            val newZoom = (currentZoom + (zoom - 1f) * 0.5f).coerceIn(0f, 1f)
+                            zoomLevel = newZoom
+                        }
+                    }
+                    .pointerInput(Unit) {
+                        // Tap-to-focus
+                        detectTapGestures { tapOffset ->
+                            val meteringPointFactory = previewView.meteringPointFactory
+                            val point = meteringPointFactory.createPoint(tapOffset.x, tapOffset.y)
+                            val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF)
+                                .setAutoCancelDuration(3, TimeUnit.SECONDS)
+                                .build()
+                            camera?.cameraControl?.startFocusAndMetering(action)
+                        }
+                    }
             )
 
             // Controls overlay
@@ -185,10 +242,11 @@ fun CameraScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 32.dp),
+                    .padding(bottom = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Recording timer
                 if (isRecording) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -210,30 +268,55 @@ fun CameraScreen(
                     }
                 }
 
+                // Zoom slider
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "1×",
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                    Slider(
+                        value = zoomLevel,
+                        onValueChange = { zoomLevel = it },
+                        valueRange = 0f..1f,
+                        modifier = Modifier.weight(1f),
+                        colors = SliderDefaults.colors(
+                            thumbColor = Color.White,
+                            activeTrackColor = Color.White,
+                            inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+                        )
+                    )
+                    Text(
+                        "MAX",
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+
+                // Button row: Flash | Record/Stop | Switch camera
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Switch camera
+                    // Flash / torch toggle (only for back camera)
                     IconButton(
-                        onClick = {
-                            if (!isRecording) {
-                                lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK)
-                                    CameraSelector.LENS_FACING_FRONT
-                                else
-                                    CameraSelector.LENS_FACING_BACK
-                            }
-                        },
-                        enabled = !isRecording,
+                        onClick = { torchEnabled = !torchEnabled },
+                        enabled = lensFacing == CameraSelector.LENS_FACING_BACK,
                         modifier = Modifier
                             .size(56.dp)
                             .background(Color.White.copy(alpha = 0.2f), CircleShape)
                     ) {
                         Icon(
-                            Icons.Default.Cameraswitch,
-                            contentDescription = "切换摄像头",
-                            tint = Color.White,
+                            if (torchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                            contentDescription = if (torchEnabled) "关闭闪光灯" else "开启闪光灯",
+                            tint = if (torchEnabled) Color.Yellow else Color.White,
                             modifier = Modifier.size(28.dp)
                         )
                     }
@@ -272,8 +355,30 @@ fun CameraScreen(
                         )
                     }
 
-                    // Placeholder to balance layout
-                    Spacer(Modifier.size(56.dp))
+                    // Switch camera
+                    IconButton(
+                        onClick = {
+                            if (!isRecording) {
+                                torchEnabled = false
+                                zoomLevel = 0f
+                                lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK)
+                                    CameraSelector.LENS_FACING_FRONT
+                                else
+                                    CameraSelector.LENS_FACING_BACK
+                            }
+                        },
+                        enabled = !isRecording,
+                        modifier = Modifier
+                            .size(56.dp)
+                            .background(Color.White.copy(alpha = 0.2f), CircleShape)
+                    ) {
+                        Icon(
+                            Icons.Default.Cameraswitch,
+                            contentDescription = "切换摄像头",
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
                 }
             }
         }

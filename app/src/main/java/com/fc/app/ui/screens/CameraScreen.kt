@@ -163,11 +163,10 @@ fun CameraScreen(
             provider.unbindAll()
             val boundCamera = provider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, vc)
             camera = boundCamera
-            // Reset state when switching cameras
-            zoomLevel = 0f
-            torchEnabled = false
-            boundCamera.cameraControl.setLinearZoom(0f)
-            boundCamera.cameraControl.enableTorch(false)
+            // Apply current lens state to the newly bound camera (state is already
+            // reset to defaults by the switch-camera button before lensFacing changes).
+            boundCamera.cameraControl.setLinearZoom(zoomLevel.coerceIn(0f, 1f))
+            boundCamera.cameraControl.enableTorch(torchEnabled)
         } catch (e: Exception) {
             Log.e(TAG, "Camera bind error", e)
         }

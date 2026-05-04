@@ -234,6 +234,9 @@ object PresetTemplates {
     )
 
     // ─────────── 水果促销模板工厂 ───────────
+    private const val FRUIT_DEFAULT_ACCENT_COLOR = "#FF3333"
+    private const val FRUIT_DEFAULT_TAG_COLOR = "#FF6600"
+
     private fun fruitTemplate(
         id: String,
         fruitName: String,
@@ -241,8 +244,8 @@ object PresetTemplates {
         price: String,
         originalPrice: String,
         slogan: String,
-        accentColor: String = "#FF3333",
-        tagColor: String = "#FF6600",
+        accentColor: String = FRUIT_DEFAULT_ACCENT_COLOR,
+        tagColor: String = FRUIT_DEFAULT_TAG_COLOR,
     ) = StyleTemplate(
         id = id,
         name = "$fruitName 促销",

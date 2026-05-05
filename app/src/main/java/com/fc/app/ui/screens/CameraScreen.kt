@@ -2,8 +2,12 @@ package com.fc.app.ui.screens
 
 import android.Manifest
 import android.content.Context
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
 import android.net.Uri
 import android.util.Log
+import androidx.camera.camera2.interop.Camera2CameraInfo
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.FocusMeteringAction
@@ -12,10 +16,12 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.*
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.FiberManualRecord
@@ -44,6 +50,71 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 
 private const val TAG = "CameraScreen"
 
+/** Minimum focal-length ratio between widest and second lens to treat the widest as "ultra-wide". */
+private const val ULTRA_WIDE_RATIO_THRESHOLD = 1.4f
+
+/** Ratio thresholds for assigning zoom-level labels to physical cameras. */
+private const val LABEL_ULTRA_WIDE_MAX = 0.7f
+private const val LABEL_MAIN_MAX = 1.2f
+private const val LABEL_SHORT_TELE_MAX = 2.5f
+
+/** Represents a physical camera that can be selected. */
+private data class BackCameraOption(
+    val cameraId: String,
+    val focalLength: Float,
+    val label: String,
+)
+
+/**
+ * Enumerate back-facing cameras on the device using Camera2, sorted by focal length.
+ * Labels are assigned relative to the widest-angle lens (shortest focal length).
+ * Returns an empty list if enumeration fails or no back cameras are found.
+ */
+private fun enumerateBackCameras(context: Context): List<BackCameraOption> {
+    return try {
+        val manager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        manager.cameraIdList.mapNotNull { id ->
+            try {
+                val chars = manager.getCameraCharacteristics(id)
+                if (chars.get(CameraCharacteristics.LENS_FACING) != CameraCharacteristics.LENS_FACING_BACK) {
+                    return@mapNotNull null
+                }
+                val fls = chars.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
+                val fl = fls?.minOrNull() ?: return@mapNotNull null
+                BackCameraOption(id, fl, "")
+            } catch (e: Exception) {
+                Log.w(TAG, "Skipping camera $id: ${e.message}")
+                null
+            }
+        }
+        .sortedBy { it.focalLength }
+        .let { sorted ->
+            if (sorted.isEmpty()) return@let sorted
+            // Use the widest lens as the "1×" base reference.
+            // If the widest is significantly wider than the next (ratio > ULTRA_WIDE_RATIO_THRESHOLD),
+            // treat the second as the "main" 1× camera to match common UX convention.
+            val baseFL = if (sorted.size >= 2 && sorted[1].focalLength / sorted[0].focalLength > ULTRA_WIDE_RATIO_THRESHOLD) {
+                sorted[1].focalLength
+            } else {
+                sorted[0].focalLength
+            }
+            sorted.map { cam ->
+                val ratio = cam.focalLength / baseFL
+                val label = when {
+                    ratio < LABEL_ULTRA_WIDE_MAX -> "超广"
+                    ratio < LABEL_MAIN_MAX -> "1×"
+                    ratio < LABEL_SHORT_TELE_MAX -> "%.0f×".format(ratio)
+                    else -> "${ratio.toInt()}×"
+                }
+                cam.copy(label = label)
+            }
+        }
+    } catch (e: Exception) {
+        Log.w(TAG, "Camera enumeration failed: ${e.message}")
+        emptyList()
+    }
+}
+
 /**
  * 内置 CameraX 拍摄页面，录制时使用设备支持的最高画质，
  * 替代系统原生相机（后者默认只有 480×640）。
@@ -55,7 +126,7 @@ private const val TAG = "CameraScreen"
  *  - 闪光灯按钮 → 开/关手电筒
  *  - 翻转按钮 → 前/后摄像头切换
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalCamera2Interop::class)
 @Composable
 fun CameraScreen(
     onVideoSaved: (Uri) -> Unit,
@@ -75,6 +146,13 @@ fun CameraScreen(
     var torchEnabled by remember { mutableStateOf(false) }
     // Linear zoom 0f..1f
     var zoomLevel by remember { mutableFloatStateOf(0f) }
+
+    // Enumerate physical back cameras once
+    val backCameras = remember { enumerateBackCameras(context) }
+    // selectedBackCameraId: null = use default CameraX back selector; non-null = specific physical camera
+    var selectedBackCameraId by remember {
+        mutableStateOf(backCameras.firstOrNull { it.label == "1×" }?.cameraId ?: backCameras.firstOrNull()?.cameraId)
+    }
 
     // Count up seconds while recording
     LaunchedEffect(isRecording) {
@@ -127,9 +205,9 @@ fun CameraScreen(
         return
     }
 
-    // Bind camera once permissions are granted or lens changes
+    // Bind camera once permissions are granted or lens/selection changes
     val previewView = remember { PreviewView(context) }
-    LaunchedEffect(lensFacing, hasPermissions) {
+    LaunchedEffect(lensFacing, hasPermissions, selectedBackCameraId) {
         if (!hasPermissions) return@LaunchedEffect
         val provider = suspendCancellableCoroutine<ProcessCameraProvider> { cont ->
             val future = ProcessCameraProvider.getInstance(context)
@@ -155,9 +233,24 @@ fun CameraScreen(
         val vc = VideoCapture.withOutput(recorder)
         videoCapture = vc
 
-        val cameraSelector = CameraSelector.Builder()
-            .requireLensFacing(lensFacing)
-            .build()
+        // Build a CameraSelector: use specific physical camera ID for back lens when available.
+        val cameraSelector = if (lensFacing == CameraSelector.LENS_FACING_BACK && selectedBackCameraId != null) {
+            val targetId = selectedBackCameraId
+            try {
+                CameraSelector.Builder()
+                    .addCameraFilter { infos ->
+                        infos.filter { Camera2CameraInfo.from(it).cameraId == targetId }
+                    }
+                    .build()
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not build selector for $targetId, falling back", e)
+                CameraSelector.DEFAULT_BACK_CAMERA
+            }
+        } else {
+            CameraSelector.Builder()
+                .requireLensFacing(lensFacing)
+                .build()
+        }
 
         try {
             provider.unbindAll()
@@ -267,6 +360,36 @@ fun CameraScreen(
                     }
                 }
 
+                // Physical camera selector (only shown when back camera is active and
+                // more than one physical back camera is available)
+                if (lensFacing == CameraSelector.LENS_FACING_BACK && backCameras.size > 1) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        backCameras.forEach { cam ->
+                            val isSelected = cam.cameraId == selectedBackCameraId
+                            Button(
+                                onClick = {
+                                    if (!isRecording) {
+                                        selectedBackCameraId = cam.cameraId
+                                        zoomLevel = 0f
+                                    }
+                                },
+                                enabled = !isRecording,
+                                shape = RoundedCornerShape(20.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isSelected) Color.White else Color.White.copy(alpha = 0.25f),
+                                    contentColor = if (isSelected) Color.Black else Color.White,
+                                )
+                            ) {
+                                Text(cam.label, style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
+                }
+
                 // Zoom slider
                 Row(
                     modifier = Modifier
@@ -354,7 +477,7 @@ fun CameraScreen(
                         )
                     }
 
-                    // Switch camera
+                    // Switch camera (front ↔ back)
                     IconButton(
                         onClick = {
                             if (!isRecording) {

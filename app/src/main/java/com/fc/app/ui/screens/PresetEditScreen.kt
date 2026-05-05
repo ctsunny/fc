@@ -60,7 +60,7 @@ fun PresetEditScreen(
             )
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Column(modifier = Modifier.fillMaxSize().padding(padding).imePadding()) {
 
             // 深色预览画布（与编辑界面保持一致，但无视频背景）
             Box(
@@ -119,6 +119,7 @@ fun PresetEditScreen(
                         onFontFamily = { viewModel.updatePresetEditFieldFontFamily(field.id, it) },
                         onHasBackground = { viewModel.updatePresetEditFieldHasBackground(field.id, it) },
                         onBackgroundAlpha = { viewModel.updatePresetEditFieldBackgroundAlpha(field.id, it) },
+                        onBackgroundColor = { viewModel.updatePresetEditFieldBackgroundColor(field.id, it) },
                     )
                 }
             }
@@ -139,6 +140,7 @@ private fun PresetFieldRow(
     onFontFamily: (FontFamilyOption) -> Unit = {},
     onHasBackground: (Boolean) -> Unit = {},
     onBackgroundAlpha: (Int) -> Unit = {},
+    onBackgroundColor: (String) -> Unit = {},
 ) {
     Column {
         Row(
@@ -184,6 +186,7 @@ private fun PresetFieldRow(
                 onFontFamilyChange = onFontFamily,
                 onHasBackgroundChange = onHasBackground,
                 onBackgroundAlphaChange = onBackgroundAlpha,
+                onBackgroundColorChange = onBackgroundColor,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
             )
         }

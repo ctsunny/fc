@@ -62,6 +62,7 @@ data class PresetEditUiState(
 class EditorViewModel(application: Application) : AndroidViewModel(application) {
     private companion object {
         private const val TAG = "EditorViewModel"
+        private const val DEFAULT_BG_ALPHA = 136
     }
 
     private val userPrefs = UserPreferences(application)
@@ -315,6 +316,21 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun updateFieldBackgroundColor(fieldId: String, rgbHex: String) {
+        _uiState.update { s ->
+            s.copy(fields = s.fields.map {
+                if (it.id == fieldId) {
+                    val currentAlpha = run {
+                        val h = it.backgroundColorHex.removePrefix("#")
+                        if (h.length == 8) h.substring(0, 2).toIntOrNull(16) ?: DEFAULT_BG_ALPHA else DEFAULT_BG_ALPHA
+                    }
+                    val rgb = rgbHex.removePrefix("#").takeLast(6).padStart(6, '0')
+                    it.copy(backgroundColorHex = "#%02X$rgb".format(currentAlpha))
+                } else it
+            })
+        }
+    }
+
     // ─── Watermark ────────────────────────────────────────────────────────────
 
     fun setWatermarkUri(uri: Uri?) {
@@ -399,6 +415,21 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                     val hex = it.backgroundColorHex.removePrefix("#")
                     val rgb = if (hex.length == 8) hex.substring(2) else "000000"
                     it.copy(backgroundColorHex = "#%02X$rgb".format(alpha.coerceIn(0, 255)))
+                } else it
+            })
+        }
+    }
+
+    fun updatePresetEditFieldBackgroundColor(fieldId: String, rgbHex: String) {
+        _presetEditState.update { s ->
+            s.copy(fields = s.fields.map {
+                if (it.id == fieldId) {
+                    val currentAlpha = run {
+                        val h = it.backgroundColorHex.removePrefix("#")
+                        if (h.length == 8) h.substring(0, 2).toIntOrNull(16) ?: DEFAULT_BG_ALPHA else DEFAULT_BG_ALPHA
+                    }
+                    val rgb = rgbHex.removePrefix("#").takeLast(6).padStart(6, '0')
+                    it.copy(backgroundColorHex = "#%02X$rgb".format(currentAlpha))
                 } else it
             })
         }

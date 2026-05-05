@@ -72,7 +72,7 @@ fun EditorScreen(
             )
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Column(modifier = Modifier.fillMaxSize().padding(padding).imePadding()) {
 
             AspectRatioSelectorRow(
                 selected = uiState.aspectRatioOption,
@@ -187,6 +187,7 @@ fun EditorScreen(
                         onFontFamily = { viewModel.updateFieldFontFamily(field.id, it) },
                         onHasBackground = { viewModel.updateFieldHasBackground(field.id, it) },
                         onBackgroundAlpha = { viewModel.updateFieldBackgroundAlpha(field.id, it) },
+                        onBackgroundColor = { viewModel.updateFieldBackgroundColor(field.id, it) },
                     )
                 }
                 }
@@ -415,6 +416,7 @@ private fun FieldRow(
     onFontFamily: (FontFamilyOption) -> Unit = {},
     onHasBackground: (Boolean) -> Unit = {},
     onBackgroundAlpha: (Int) -> Unit = {},
+    onBackgroundColor: (String) -> Unit = {},
 ) {
     Column {
         Row(
@@ -456,6 +458,7 @@ private fun FieldRow(
                 onFontFamilyChange = onFontFamily,
                 onHasBackgroundChange = onHasBackground,
                 onBackgroundAlphaChange = onBackgroundAlpha,
+                onBackgroundColorChange = onBackgroundColor,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
             )
         }

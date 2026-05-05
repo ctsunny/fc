@@ -62,6 +62,7 @@ data class PresetEditUiState(
 class EditorViewModel(application: Application) : AndroidViewModel(application) {
     private companion object {
         private const val TAG = "EditorViewModel"
+        private const val DEFAULT_BG_ALPHA = 136
     }
 
     private val userPrefs = UserPreferences(application)
@@ -321,7 +322,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                 if (it.id == fieldId) {
                     val currentAlpha = run {
                         val h = it.backgroundColorHex.removePrefix("#")
-                        if (h.length == 8) h.substring(0, 2).toIntOrNull(16) ?: 136 else 136
+                        if (h.length == 8) h.substring(0, 2).toIntOrNull(16) ?: DEFAULT_BG_ALPHA else DEFAULT_BG_ALPHA
                     }
                     val rgb = rgbHex.removePrefix("#").takeLast(6).padStart(6, '0')
                     it.copy(backgroundColorHex = "#%02X$rgb".format(currentAlpha))
@@ -425,7 +426,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                 if (it.id == fieldId) {
                     val currentAlpha = run {
                         val h = it.backgroundColorHex.removePrefix("#")
-                        if (h.length == 8) h.substring(0, 2).toIntOrNull(16) ?: 136 else 136
+                        if (h.length == 8) h.substring(0, 2).toIntOrNull(16) ?: DEFAULT_BG_ALPHA else DEFAULT_BG_ALPHA
                     }
                     val rgb = rgbHex.removePrefix("#").takeLast(6).padStart(6, '0')
                     it.copy(backgroundColorHex = "#%02X$rgb".format(currentAlpha))

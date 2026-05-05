@@ -50,6 +50,14 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 
 private const val TAG = "CameraScreen"
 
+/** Minimum focal-length ratio between widest and second lens to treat the widest as "ultra-wide". */
+private const val ULTRA_WIDE_RATIO_THRESHOLD = 1.4f
+
+/** Ratio thresholds for assigning zoom-level labels to physical cameras. */
+private const val LABEL_ULTRA_WIDE_MAX = 0.7f
+private const val LABEL_MAIN_MAX = 1.2f
+private const val LABEL_SHORT_TELE_MAX = 2.5f
+
 /** Represents a physical camera that can be selected. */
 private data class BackCameraOption(
     val cameraId: String,
@@ -83,9 +91,9 @@ private fun enumerateBackCameras(context: Context): List<BackCameraOption> {
         .let { sorted ->
             if (sorted.isEmpty()) return@let sorted
             // Use the widest lens as the "1×" base reference.
-            // If the widest is significantly wider than the next (ratio > 1.4),
+            // If the widest is significantly wider than the next (ratio > ULTRA_WIDE_RATIO_THRESHOLD),
             // treat the second as the "main" 1× camera to match common UX convention.
-            val baseFL = if (sorted.size >= 2 && sorted[1].focalLength / sorted[0].focalLength > 1.4f) {
+            val baseFL = if (sorted.size >= 2 && sorted[1].focalLength / sorted[0].focalLength > ULTRA_WIDE_RATIO_THRESHOLD) {
                 sorted[1].focalLength
             } else {
                 sorted[0].focalLength
@@ -93,9 +101,9 @@ private fun enumerateBackCameras(context: Context): List<BackCameraOption> {
             sorted.map { cam ->
                 val ratio = cam.focalLength / baseFL
                 val label = when {
-                    ratio < 0.7f -> "超广"
-                    ratio < 1.2f -> "1×"
-                    ratio < 2.5f -> "%.0f×".format(ratio + 0.5f)
+                    ratio < LABEL_ULTRA_WIDE_MAX -> "超广"
+                    ratio < LABEL_MAIN_MAX -> "1×"
+                    ratio < LABEL_SHORT_TELE_MAX -> "%.0f×".format(ratio)
                     else -> "${ratio.toInt()}×"
                 }
                 cam.copy(label = label)
@@ -227,7 +235,7 @@ fun CameraScreen(
 
         // Build a CameraSelector: use specific physical camera ID for back lens when available.
         val cameraSelector = if (lensFacing == CameraSelector.LENS_FACING_BACK && selectedBackCameraId != null) {
-            val targetId = selectedBackCameraId!!
+            val targetId = selectedBackCameraId
             try {
                 CameraSelector.Builder()
                     .addCameraFilter { infos ->

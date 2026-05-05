@@ -50,6 +50,6 @@ enum class FontFamilyOption(val label: String) {
     SERIF("宋体"),
     MONOSPACE("等宽"),
     LIGHT("细黑"),
-    BLACK("超黑体"),
+    BLACK("超黑"),
     CONDENSED_LIGHT("细紧凑"),
 }

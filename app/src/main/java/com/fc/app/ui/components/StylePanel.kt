@@ -1,6 +1,7 @@
 package com.fc.app.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -24,6 +25,21 @@ import com.fc.app.util.toComposeFontFamily
 val presetColors = listOf(
     "#FFFFFF", "#000000", "#FF3333", "#FF6600",
     "#FFE100", "#00CC44", "#0088FF", "#CC00FF"
+)
+
+/**
+ * 字幕背景预设颜色（RGB，格式 #RRGGBB）。
+ * 点击后保留当前透明度，仅替换 RGB 部分。
+ */
+val presetBgColors = listOf(
+    "#000000",  // 黑色
+    "#FFFFFF",  // 白色
+    "#1A1A2E",  // 深蓝黑
+    "#C0392B",  // 深红
+    "#E67E22",  // 橙色
+    "#F1C40F",  // 金黄
+    "#1E8449",  // 深绿
+    "#2980B9",  // 蓝色
 )
 
 /** Extract the alpha component (0–255) from a "#AARRGGBB" or "#RRGGBB" hex string. */
@@ -51,6 +67,7 @@ fun StylePanel(
     onFontFamilyChange: (FontFamilyOption) -> Unit = {},
     onHasBackgroundChange: (Boolean) -> Unit = {},
     onBackgroundAlphaChange: (Int) -> Unit = {},
+    onBackgroundColorChange: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -117,7 +134,7 @@ fun StylePanel(
         }
         Spacer(Modifier.height(6.dp))
 
-        // 字体背景开关 + 透明度
+        // 字幕背景开关 + 透明度 + 颜色
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("字幕背景", style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(56.dp))
             Switch(
@@ -140,6 +157,29 @@ fun StylePanel(
                     valueRange = 0f..255f,
                     modifier = Modifier.weight(1f)
                 )
+            }
+            // 背景颜色预设
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("背景色", style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(40.dp))
+                val currentRgb = run {
+                    val h = field.backgroundColorHex.removePrefix("#")
+                    if (h.length == 8) "#${h.substring(2)}" else if (h.length == 6) "#$h" else "#000000"
+                }
+                presetBgColors.forEach { hex ->
+                    val selected = currentRgb.equals(hex, ignoreCase = true)
+                    val parsedColor = runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(Color.Black)
+                    Box(
+                        modifier = Modifier
+                            .size(if (selected) 30.dp else 26.dp)
+                            .clip(CircleShape)
+                            .background(parsedColor)
+                            .then(
+                                if (selected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                                else Modifier
+                            )
+                            .clickable { onBackgroundColorChange(hex) }
+                    )
+                }
             }
         }
         Spacer(Modifier.height(6.dp))

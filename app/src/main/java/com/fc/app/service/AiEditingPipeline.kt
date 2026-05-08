@@ -39,7 +39,6 @@ class AiEditingPipeline(private val context: Context) {
 
     companion object {
         private const val TAG = "AiEditingPipeline"
-        private const val COVER_OVERLAY_DURATION_MS = 3_000L
     }
 
     data class PipelineResult(

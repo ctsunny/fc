@@ -116,14 +116,14 @@ class AiApiClient(
         withCover: Boolean = true,
         subtitleLang: String = "zh",
     ): LlmEditResult = withContext(Dispatchers.IO) {
-        val maxInputChars = (maxTokenBudget * 0.6 * 1.5).toInt() // ~1.5 chars/token for Chinese
+        val maxInputChars = (maxTokenBudget * INPUT_TOKEN_RATIO * CHINESE_CHARS_PER_TOKEN).toInt()
         val truncatedText = if (asrText.length > maxInputChars) {
             asrText.take(maxInputChars) + "…"
         } else {
             asrText
         }
 
-        val systemPrompt = if (subtitleLang == "zh") "纠错并美化为营销口吻的中文，JSON输出" else "纠错并美化为营销口吻，保留中英双语，JSON输出"
+        val systemPrompt = if (subtitleLang == "zh") SYSTEM_PROMPT_ZH else SYSTEM_PROMPT_ZH_EN
 
         val coverInstruction = if (withCover && productName.isNotBlank()) {
             "\n商品:$productName${if (priceText.isNotBlank()) " 价格:$priceText" else ""}。生成封面title(≤12字)和subtitle(≤20字)。"
@@ -197,6 +197,12 @@ $truncatedText$coverInstruction
 
     companion object {
         private const val TAG = "AiApiClient"
+        /** 占用 token 预算的输入文本比例上限。 */
+        private const val INPUT_TOKEN_RATIO = 0.6
+        /** 中文字符与 token 的近似换算系数（每个 token ≈ 1.5 汉字）。 */
+        private const val CHINESE_CHARS_PER_TOKEN = 1.5
+        private const val SYSTEM_PROMPT_ZH = "纠错并美化为营销口吻的中文，JSON输出"
+        private const val SYSTEM_PROMPT_ZH_EN = "纠错并美化为营销口吻，保留中英双语，JSON输出"
     }
 
     // ─── 内部序列化数据类 ─────────────────────────────────────────────────────

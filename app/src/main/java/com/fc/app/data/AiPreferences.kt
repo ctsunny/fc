@@ -92,6 +92,8 @@ class AiPreferences(context: Context) {
             ?.let { runCatching { SubtitleLang.valueOf(it) }.getOrNull() }
             ?: SubtitleLang.ZH
 
+    // ─── 并发限制（预留，暂未暴露到 UI） ────────────────────────────────────────
+
     fun saveMaxConcurrentCalls(n: Int) {
         prefs.edit().putInt(KEY_CONCURRENT_CALLS, n.coerceIn(1, 4)).apply()
     }

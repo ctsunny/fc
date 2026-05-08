@@ -134,21 +134,22 @@ fun AiProcessingScreen(
     }
 }
 
+private val STAGE_ORDINALS = mapOf(
+    AiPipelineStage.EXTRACTING_AUDIO to 0,
+    AiPipelineStage.TRANSCRIBING to 1,
+    AiPipelineStage.REFINING to 2,
+    AiPipelineStage.COMPOSITING to 3,
+    AiPipelineStage.DONE to 4,
+)
+
 @Composable
 private fun StageRow(
     label: String,
     currentStage: AiPipelineStage,
     thisStage: AiPipelineStage,
 ) {
-    val ordinals = mapOf(
-        AiPipelineStage.EXTRACTING_AUDIO to 0,
-        AiPipelineStage.TRANSCRIBING to 1,
-        AiPipelineStage.REFINING to 2,
-        AiPipelineStage.COMPOSITING to 3,
-        AiPipelineStage.DONE to 4,
-    )
-    val current = ordinals[currentStage] ?: -1
-    val target = ordinals[thisStage] ?: 0
+    val current = STAGE_ORDINALS[currentStage] ?: -1
+    val target = STAGE_ORDINALS[thisStage] ?: 0
     val (icon, tint) = when {
         current > target -> Icons.Default.CheckCircle to MaterialTheme.colorScheme.primary
         current == target -> Icons.Default.Pending to MaterialTheme.colorScheme.tertiary

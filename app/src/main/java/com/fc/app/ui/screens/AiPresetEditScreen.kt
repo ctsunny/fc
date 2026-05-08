@@ -34,7 +34,7 @@ fun AiPresetEditScreen(
     var workflow by remember(current.id) { mutableStateOf(current.workflow) }
     var provider by remember(current.id) { mutableStateOf(current.apiProvider) }
     var modelId by remember(current.id) { mutableStateOf(current.modelId) }
-    var tokenBudget by remember(current.id) { mutableStateOf(current.maxTokenBudget.toFloat()) }
+    var tokenBudget by remember(current.id) { mutableFloatStateOf(current.maxTokenBudget.toFloat()) }
     var subtitleLang by remember(current.id) { mutableStateOf(current.subtitleLang) }
     var productName by remember(current.id) { mutableStateOf(current.productName) }
     var priceText by remember(current.id) { mutableStateOf(current.priceText) }

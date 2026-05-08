@@ -34,7 +34,7 @@ fun AiSettingsSection(aiViewModel: AiEditingViewModel) {
     var apiKey by remember(savedSettings) { mutableStateOf(savedSettings.apiKey) }
     var customBaseUrl by remember(savedSettings) { mutableStateOf(savedSettings.customBaseUrl) }
     var defaultModel by remember(savedSettings) { mutableStateOf(savedSettings.defaultModel) }
-    var tokenBudget by remember(savedSettings) { mutableStateOf(savedSettings.maxTokenBudget.toFloat()) }
+    var tokenBudget by remember(savedSettings) { mutableFloatStateOf(savedSettings.maxTokenBudget.toFloat()) }
     var subtitleLang by remember(savedSettings) { mutableStateOf(savedSettings.subtitleLang) }
     var showApiKey by remember { mutableStateOf(false) }
 

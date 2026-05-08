@@ -18,6 +18,7 @@ import java.io.File
 object AudioExtractor {
 
     private const val TAG = "AudioExtractor"
+    private const val BUFFER_SIZE_BYTES = 256 * 1024
 
     /**
      * @param context Android Context（用于打开 ContentResolver Uri）
@@ -51,7 +52,7 @@ object AudioExtractor {
                 val muxerTrackIndex = muxer.addTrack(format)
                 muxer.start()
 
-                val buffer = java.nio.ByteBuffer.allocate(256 * 1024)
+                val buffer = java.nio.ByteBuffer.allocate(BUFFER_SIZE_BYTES)
                 val bufferInfo = android.media.MediaCodec.BufferInfo()
 
                 while (true) {

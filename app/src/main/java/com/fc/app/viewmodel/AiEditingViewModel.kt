@@ -82,7 +82,10 @@ class AiEditingViewModel(application: Application) : AndroidViewModel(applicatio
     private val _editingPreset = MutableStateFlow<AiPreset?>(null)
     val editingPreset: StateFlow<AiPreset?> = _editingPreset.asStateFlow()
 
-    // 合成完成后的输出文件
+    /**
+     * 合成完成后的输出临时文件。
+     * 用户调用 [exportFinal] 保存到 MediaStore 后，该文件可被删除（系统缓存目录会自动清理）。
+     */
     private val _outputFile = MutableStateFlow<File?>(null)
     val outputFile: StateFlow<File?> = _outputFile.asStateFlow()
 

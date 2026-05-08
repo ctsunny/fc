@@ -125,5 +125,7 @@ dependencies {
     implementation(libs.camerax.lifecycle)
     implementation(libs.camerax.video)
     implementation(libs.camerax.view)
+    implementation(libs.okhttp)
+    implementation(libs.security.crypto)
     debugImplementation(libs.androidx.ui.tooling)
 }

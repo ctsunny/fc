@@ -16,12 +16,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.fc.app.data.UserPreset
+import com.fc.app.viewmodel.AiEditingViewModel
 import com.fc.app.viewmodel.EditorViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModel: EditorViewModel,
+    aiViewModel: AiEditingViewModel,
     onBack: () -> Unit,
     onEditPreset: () -> Unit = {},
 ) {
@@ -79,64 +81,74 @@ fun SettingsScreen(
             )
         }
     ) { padding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(padding),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             // Export / Import config row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = { exportLauncher.launch("fc_config.json") },
-                    modifier = Modifier.weight(1f)
-                ) { Text("导出配置") }
-                OutlinedButton(
-                    onClick = { importLauncher.launch(arrayOf("application/json", "*/*")) },
-                    modifier = Modifier.weight(1f)
-                ) { Text("导入配置") }
-            }
-            HorizontalDivider()
-            if (presets.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        "暂无保存的预设\n点击右下角按钮保存当前文字样式",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
+                    OutlinedButton(
+                        onClick = { exportLauncher.launch("fc_config.json") },
+                        modifier = Modifier.weight(1f)
+                    ) { Text("导出配置") }
+                    OutlinedButton(
+                        onClick = { importLauncher.launch(arrayOf("application/json", "*/*")) },
+                        modifier = Modifier.weight(1f)
+                    ) { Text("导入配置") }
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(presets, key = { it.name }) { preset ->
-                        PresetCard(
-                            preset = preset,
-                            onLoad = {
-                                viewModel.applyUserPreset(preset)
-                                onBack()
-                            },
-                            onEdit = {
-                                viewModel.startPresetEdit(preset)
-                                onEditPreset()
-                            },
-                            onDelete = { deleteCandidate = preset }
+            }
+            item { HorizontalDivider() }
+
+            // User presets
+            if (presets.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "暂无保存的预设\n点击右下角按钮保存当前文字样式",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                     }
-                    // Bottom spacing so FAB doesn't overlap last item
-                    item { Spacer(Modifier.height(80.dp)) }
+                }
+            } else {
+                items(presets, key = { it.name }) { preset ->
+                    PresetCard(
+                        preset = preset,
+                        onLoad = {
+                            viewModel.applyUserPreset(preset)
+                            onBack()
+                        },
+                        onEdit = {
+                            viewModel.startPresetEdit(preset)
+                            onEditPreset()
+                        },
+                        onDelete = { deleteCandidate = preset }
+                    )
                 }
             }
+
+            item { HorizontalDivider() }
+
+            // AI settings section
+            item {
+                AiSettingsSection(aiViewModel = aiViewModel)
+            }
+
+            // Bottom spacing so FAB doesn't overlap last item
+            item { Spacer(Modifier.height(80.dp)) }
         }
     }
 

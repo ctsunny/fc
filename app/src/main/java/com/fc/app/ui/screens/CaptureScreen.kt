@@ -3,10 +3,12 @@ package com.fc.app.ui.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Settings
@@ -26,6 +28,7 @@ import com.fc.app.util.AspectRatioOption
 fun CaptureScreen(
     onVideoSelected: (Uri, AspectRatioOption) -> Unit,
     onCameraClick: () -> Unit = {},
+    onAiEditingClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     hasDraft: Boolean = false,
     onResumeDraft: () -> Unit = {},
@@ -116,6 +119,21 @@ fun CaptureScreen(
                 Text("拍摄新视频（高清）", style = MaterialTheme.typography.titleMedium)
             }
 
+            Spacer(Modifier.height(16.dp))
+
+            OutlinedButton(
+                onClick = onAiEditingClick,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.tertiary
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary)
+            ) {
+                Icon(Icons.Default.AutoAwesome, contentDescription = null)
+                Spacer(Modifier.width(12.dp))
+                Text("AI 智能剪辑（自动字幕 + 封面）", style = MaterialTheme.typography.titleMedium)
+            }
+
             if (hasDraft) {
                 Spacer(Modifier.height(16.dp))
                 OutlinedButton(
@@ -131,7 +149,7 @@ fun CaptureScreen(
             Spacer(Modifier.height(40.dp))
 
             Text(
-                "流程：选视频 → 套模板 → 拖拽调位 → 导出",
+                "手动编辑：选视频 → 套模板 → 拖拽调位 → 导出\nAI 剪辑：选预设 → 拍摄 → 自动处理 → 复核导出",
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)

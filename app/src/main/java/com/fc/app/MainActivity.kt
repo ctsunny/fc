@@ -22,6 +22,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.fc.app.ui.screens.AiEditorScreen
+import com.fc.app.ui.screens.AiPresetEditScreen
+import com.fc.app.ui.screens.AiPresetPickerScreen
+import com.fc.app.ui.screens.AiProcessingScreen
 import com.fc.app.ui.screens.CameraScreen
 import com.fc.app.ui.screens.CaptureScreen
 import com.fc.app.ui.screens.EditorScreen
@@ -29,6 +33,7 @@ import com.fc.app.ui.screens.ExportScreen
 import com.fc.app.ui.screens.PresetEditScreen
 import com.fc.app.ui.screens.SettingsScreen
 import com.fc.app.ui.theme.FcTheme
+import com.fc.app.viewmodel.AiEditingViewModel
 import com.fc.app.viewmodel.EditorViewModel
 
 class MainActivity : ComponentActivity() {
@@ -43,6 +48,7 @@ class MainActivity : ComponentActivity() {
 fun FcApp() {
     val navController = rememberNavController()
     val vm: EditorViewModel = viewModel()
+    val aiVm: AiEditingViewModel = viewModel()
     val state by vm.uiState.collectAsState()
 
     NavHost(navController = navController, startDestination = "capture") {
@@ -56,6 +62,9 @@ fun FcApp() {
                 },
                 onCameraClick = {
                     navController.navigate("camera") { launchSingleTop = true }
+                },
+                onAiEditingClick = {
+                    navController.navigate("aiPresetPicker") { launchSingleTop = true }
                 },
                 onSettingsClick = {
                     navController.navigate("settings") { launchSingleTop = true }
@@ -112,6 +121,7 @@ fun FcApp() {
         composable("settings") {
             SettingsScreen(
                 viewModel = vm,
+                aiViewModel = aiVm,
                 onBack = { navController.popBackStack() },
                 onEditPreset = {
                     navController.navigate("presetEdit") { launchSingleTop = true }
@@ -136,6 +146,87 @@ fun FcApp() {
                     }
                 },
                 onCancel = { navController.popBackStack() }
+            )
+        }
+
+        // ── AI 剪辑路径 ────────────────────────────────────────────────────────
+
+        composable("aiPresetPicker") {
+            AiPresetPickerScreen(
+                viewModel = aiVm,
+                onPresetSelected = { preset ->
+                    aiVm.resetPipeline()
+                    // 先去拍摄或选择视频，拍完后回调 aiCameraResult
+                    navController.navigate("aiCamera/${preset.id}") { launchSingleTop = true }
+                },
+                onNewPreset = {
+                    aiVm.startNewPreset()
+                    navController.navigate("aiPresetEdit") { launchSingleTop = true }
+                },
+                onEditPreset = { preset ->
+                    aiVm.startEditPreset(preset)
+                    navController.navigate("aiPresetEdit") { launchSingleTop = true }
+                },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable("aiPresetEdit") {
+            AiPresetEditScreen(
+                viewModel = aiVm,
+                onSave = { navController.popBackStack() },
+                onCancel = { navController.popBackStack() },
+            )
+        }
+
+        composable("aiCamera/{presetId}") { backStackEntry ->
+            val presetId = backStackEntry.arguments?.getString("presetId") ?: ""
+            CameraScreen(
+                onVideoSaved = { uri ->
+                    aiVm.setPendingVideoUri(uri)
+                    aiVm.startPipeline(uri, presetId)
+                    navController.navigate("aiProcessing") {
+                        popUpTo("aiPresetPicker")
+                        launchSingleTop = true
+                    }
+                },
+                onCancel = { navController.popBackStack() }
+            )
+        }
+
+        composable("aiProcessing") {
+            AiProcessingScreen(
+                viewModel = aiVm,
+                onDone = {
+                    navController.navigate("aiEditor") {
+                        popUpTo("aiPresetPicker")
+                        launchSingleTop = true
+                    }
+                },
+                onCancel = {
+                    aiVm.resetPipeline()
+                    navController.popBackStack("aiPresetPicker", inclusive = false)
+                },
+            )
+        }
+
+        composable("aiEditor") {
+            val videoUri by aiVm.pendingVideoUri.collectAsState()
+            videoUri?.let { uri ->
+                AiEditorScreen(
+                    viewModel = aiVm,
+                    videoUri = uri,
+                    onExportDone = {
+                        navController.navigate("capture") {
+                            popUpTo("capture") { inclusive = true }
+                        }
+                    },
+                    onBack = { navController.popBackStack() },
+                )
+            } ?: EditorFallbackScreen(
+                title = "没有待处理的视频",
+                actionLabel = "返回",
+                onAction = { navController.popBackStack("capture", inclusive = false) }
             )
         }
     }

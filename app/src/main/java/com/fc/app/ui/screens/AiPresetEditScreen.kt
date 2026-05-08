@@ -129,7 +129,7 @@ fun AiPresetEditScreen(
             OutlinedTextField(
                 value = priceText,
                 onValueChange = { priceText = it },
-                label = { Text("价格文字（如 "9.9元/斤"）") },
+                label = { Text("价格文字（如 9.9元/斤）") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
